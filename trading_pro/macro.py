@@ -35,10 +35,20 @@ MACRO_SYMBOLS: Dict[str, str] = {
     "HYG": "HYG",
     "IEF": "IEF",
     "IWM": "IWM",
+    "NDX": "^NDX",
     "QQQ": "QQQ",
     "VIX": "^VIX",
     "BTC": "BTC-USD",
 }
+
+
+def fmt_pts(val: float) -> str:
+    """Formats Nasdaq-100 index points with German thousands separator (e.g. 26.047)."""
+    if val is None or np.isnan(val):
+        return "—"
+    if abs(val) >= 1000.0:
+        return f"{val:,.0f}".replace(",", ".")
+    return f"{val:.2f}"
 
 # (US Radar Ticker, Theme, DE WKN, Xetra Yahoo Ticker, German UCITS ETF Name)
 HYPE_RADAR_ETFS: List[Tuple[str, str, str, Optional[str], str]] = [
@@ -237,20 +247,24 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
         df["DXY_sma50"] = np.nan
         df["sig_dxy"] = 1
 
-    if "QQQ" in df.columns:
-        df["QQQ_sma50"] = df["QQQ"].rolling(50).mean()
-        df["QQQ_sma200"] = df["QQQ"].rolling(200).mean()
-        df["QQQ_ext200"] = ((df["QQQ"] / df["QQQ_sma200"]) - 1.0) * 100.0
-        df["sig_qqq50_raw"] = (df["QQQ"] > df["QQQ_sma50"]).astype(int)
+    idx_col = "NDX" if ("NDX" in df.columns and df["NDX"].notna().sum() >= 200) else ("QQQ" if "QQQ" in df.columns else None)
+    if idx_col is not None:
+        idx_s = df[idx_col]
+        df["NDX_ref"] = idx_s
+        df["QQQ_sma50"] = idx_s.rolling(50).mean()
+        df["QQQ_sma200"] = idx_s.rolling(200).mean()
+        df["QQQ_ext200"] = ((idx_s / df["QQQ_sma200"]) - 1.0) * 100.0
+        df["sig_qqq50_raw"] = (idx_s > df["QQQ_sma50"]).astype(int)
         df["sig_qqq50_3d"] = _apply_confirmation(df["sig_qqq50_raw"], days=3)
         # R1-F: Wider SMA200 hysteresis band (+2.5% re-entry / -3.0% exit)
-        df["sig_qqq200_band"] = _apply_sma200_band(df["QQQ"], df["QQQ_sma200"], up_buf=0.025, dn_buf=0.030)
-        vol20_raw = df["QQQ"].pct_change().rolling(20).std() * np.sqrt(252.0) * 100.0
+        df["sig_qqq200_band"] = _apply_sma200_band(idx_s, df["QQQ_sma200"], up_buf=0.025, dn_buf=0.030)
+        vol20_raw = idx_s.pct_change().rolling(20).std() * np.sqrt(252.0) * 100.0
         df["QQQ_vol20"] = vol20_raw.rolling(5).mean()
         df["sig_vol_band"] = _apply_vol_band(df["QQQ_vol20"], lo=20.0, hi=28.0)
         # R1-F: Overheating hysteresis brake (> +30% vs SMA200 trims 2x -> 1x; re-enables < +22%)
         df["sig_not_overheat"] = _apply_vol_band(df["QQQ_ext200"], lo=22.0, hi=30.0)
     else:
+        df["NDX_ref"] = np.nan
         df["QQQ_sma50"] = np.nan
         df["QQQ_sma200"] = np.nan
         df["QQQ_ext200"] = np.nan
@@ -327,15 +341,21 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]:
-    """Computes live R1-F 4-Stage Core-Allocation status (A0LC12 2x Nasdaq / DBX0AN Money Market),
-    exact distances to trigger thresholds, weekly Friday-check state, and next action hint.
+    """Computes live R1-F 4-Stage Core-Allocation status (A0LC12 2x Nasdaq / DBX0AN Money Market)
+    referenced to Nasdaq-100 points (^NDX), exact distances, and next action hint.
     """
-    if mdf is None or mdf.empty or "QQQ" not in mdf.columns or "QQQ_sma200" not in mdf.columns:
+    if mdf is None or mdf.empty or "QQQ_sma200" not in mdf.columns:
         return {"available": False}
+
+    idx_col = "NDX_ref" if "NDX_ref" in mdf.columns else ("NDX" if "NDX" in mdf.columns else "QQQ")
+    if idx_col not in mdf.columns:
+        return {"available": False}
+    is_ndx = "NDX" in mdf.columns and mdf["NDX"].notna().sum() >= 200
+    idx_name = "Nasdaq-100" if is_ndx else "QQQ"
 
     last = mdf.iloc[-1]
     last_dt = mdf.index[-1]
-    qqq = float(last.get("QQQ", np.nan))
+    qqq = float(last.get(idx_col, np.nan))
     sma50 = float(last.get("QQQ_sma50", np.nan))
     sma200 = float(last.get("QQQ_sma200", np.nan))
     if np.isnan(qqq) or np.isnan(sma50) or np.isnan(sma200) or sma50 <= 0 or sma200 <= 0:
@@ -377,18 +397,18 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
     if stage == 0:
         if sma50_raw_ok:
             next_trigger = (
-                f"Nächster Schritt (Stufe 1 / 50% A0LC12): QQQ > SMA50 ({sma50:.2f}) wartet auf 3T-/Freitags-Bestätigung"
+                f"Nächster Schritt (Stufe 1 / 50% A0LC12): {idx_name} > SMA50 ({fmt_pts(sma50)}) wartet auf 3T-/Freitags-Bestätigung"
             )
         else:
             need_pct = ((sma50 / qqq) - 1.0) * 100.0
             next_trigger = (
-                f"Nächster Schritt (Stufe 1 / 50% A0LC12): QQQ > SMA50 ({sma50:.2f}, noch {need_pct:+.1f}%)"
+                f"Nächster Schritt (Stufe 1 / 50% A0LC12): {idx_name} > SMA50 ({fmt_pts(sma50)}, noch {need_pct:+.1f}%)"
             )
     elif stage == 1:
         need_up = ((sma200_up / qqq) - 1.0) * 100.0
         next_trigger = (
-            f"Aufstieg (Stufe 2/3): QQQ > {sma200_up:.2f} (+2,5% über SMA200, noch {need_up:+.1f}%)  |  "
-            f"Exit (Stufe 0): QQQ < SMA50 ({sma50:.2f}, Puffer {vs_sma50_pct:+.1f}%)"
+            f"Aufstieg (Stufe 2/3): {idx_name} > {fmt_pts(sma200_up)} (+2,5% über SMA200, noch {need_up:+.1f}%)  |  "
+            f"Exit (Stufe 0): {idx_name} < SMA50 ({fmt_pts(sma50)}, Puffer {vs_sma50_pct:+.1f}%)"
         )
     elif stage == 2:
         blockers = []
@@ -401,12 +421,12 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
         blocker_str = " + ".join(blockers) if blockers else "Freitags-Check abwarten"
         next_trigger = (
             f"Turbo (Stufe 3 / 100% A0LC12): {blocker_str}  |  "
-            f"Exit-Puffer (SMA200 -3% = {sma200_dn:.2f}): {vs_band_dn_pct:+.1f}%"
+            f"Exit-Puffer (SMA200 -3% = {fmt_pts(sma200_dn)}): {vs_band_dn_pct:+.1f}%"
         )
     else:
         next_trigger = (
             f"Bremse → 50% (Depot B verkaufen): bei (IRX>4% & Fed ROT), Vola > 28% ({vol20:.1f}%) oder Ext200 > +30% ({vs_sma200_pct:+.1f}%)  |  "
-            f"Exit-Puffer (-3%): {vs_band_dn_pct:+.1f}%"
+            f"Exit-Puffer (-3% = {fmt_pts(sma200_dn)}): {vs_band_dn_pct:+.1f}%"
         )
 
     if weekly_pending:
@@ -417,6 +437,7 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
     return {
         "available": True,
         "as_of": last_dt.strftime("%d.%m.%Y"),
+        "index_name": idx_name,
         "stage": stage,
         "live_stage": live_stage,
         "is_friday": is_friday,
@@ -427,6 +448,7 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
         "a0lc12_pct": a0lc12_pct,
         "dbx0an_pct": dbx0an_pct,
         "eff_lev": eff_lev,
+        "ndx": qqq,
         "qqq": qqq,
         "sma50": sma50,
         "sma200": sma200,
@@ -530,7 +552,7 @@ def load_macro_data(force_download: bool = False) -> pd.DataFrame:
     if not force_download and os.path.exists(MACRO_CACHE_FILE):
         try:
             mdf = pd.read_csv(MACRO_CACHE_FILE, index_col=0, parse_dates=True)
-            if not mdf.empty and len(mdf) >= 100:
+            if not mdf.empty and len(mdf) >= 100 and "NDX" in mdf.columns:
                 return compute_macro_signals(mdf)
         except Exception:
             pass
