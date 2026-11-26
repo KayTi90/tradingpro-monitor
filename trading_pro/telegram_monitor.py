@@ -467,14 +467,12 @@ def _short_core_next_step(core: Dict[str, Any]) -> str:
     if st == 0:
         sma50 = float(core["sma50"])
         need = ((sma50 / ndx) - 1.0) * 100.0 if ndx > 0 else 0.0
-        tgt_pct = "100 %" if (core["smart_fed_ok"] and core["vol_ok"] and core["overheat_ok"]) else "50 %"
+        tgt_pct = "100 %" if (core["vol_ok"] and core["overheat_ok"]) else "50 %"
         if need <= 0:
             return f"Einstieg {tgt_pct}: {idx} über 50er ({fmt_pts(sma50)}) — wartet auf Bestätigung"
         return f"Einstieg {tgt_pct} ab {idx} &gt; {fmt_pts(sma50)} ({need:+.1f} %)"
     if st == 1:
         wait_for = []
-        if not core["smart_fed_ok"]:
-            wait_for.append(f"Zins ≤4 %/GRÜN ({core['irx']:.2f} %)")
         if not core["vol_ok"]:
             wait_for.append(f"Vola &lt;25 % ({core['vol20']:.0f} %)")
         if not core["overheat_ok"]:
@@ -483,7 +481,7 @@ def _short_core_next_step(core: Dict[str, Any]) -> str:
         exit_pt = fmt_pts(core["sma200_dn"]) if core["sma200_band_ok"] else fmt_pts(core["sma50"])
         return f"2×-Turbo ab: {w_txt} · Exit &lt; {exit_pt}"
     exit_pt = fmt_pts(core["sma200_dn"]) if core["sma200_band_ok"] else fmt_pts(core["sma50"])
-    return f"Bremse auf 50 % bei Vola &gt;35 % ({core['vol20']:.0f} %) oder Zins &gt;4 %↑ · Exit &lt; {exit_pt}"
+    return f"Bremse auf 50 % bei Vola &gt;35 % ({core['vol20']:.0f} %) oder Ext &gt;+30 % · Exit &lt; {exit_pt}"
 
 
 def build_alerts_and_messages(
@@ -821,7 +819,6 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
       <div class="lights">
         <div class="light-pill"><span class="dot ${{c.sma50_ok?'dot-green':'dot-red'}}"></span><div><b>50er</b><br>${{fmtS(c.vs_sma50_pct)}}%</div></div>
         <div class="light-pill"><span class="dot ${{c.sma200_band_ok?'dot-green':'dot-red'}}"></span><div><b>200er (+2,5/-3%)</b><br>${{fmtS(c.vs_sma200_pct)}}%</div></div>
-        <div class="light-pill"><span class="dot ${{c.smart_fed_ok?'dot-green':'dot-red'}}"></span><div><b>Smart-Zins &gt;4%</b><br>${{fmt(c.irx)}}%</div></div>
         <div class="light-pill"><span class="dot ${{volDot}}"></span><div><b>Vola (25/35)</b><br>${{fmt(c.vol20,1)}}%</div></div>
         <div class="light-pill"><span class="dot ${{ohDot}}"></span><div><b>Überhitzung</b><br>${{c.overheat_ok ? 'OK (<30%)' : 'BREMS'}}</div></div>
       </div>
