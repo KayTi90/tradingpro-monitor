@@ -24,6 +24,7 @@ import pandas as pd
 
 from .data_loader import download_tickers_parallel, load_ticker_data
 from .macro import (
+    fmt_pts,
     get_core_allocation_status,
     get_latest_macro_snapshot,
     get_macro_flip_diagnostics,
@@ -465,17 +466,18 @@ def _stage_action_hint(old_stage: Optional[int], new_stage: int) -> str:
 
 def _short_core_next_step(core: Dict[str, Any]) -> str:
     st = int(core["stage"])
-    qqq = float(core["qqq"])
+    ndx = float(core.get("ndx", core.get("qqq", 0.0)))
+    idx = str(core.get("index_name", "Nasdaq-100"))
     if st == 0:
         sma50 = float(core["sma50"])
-        need = ((sma50 / qqq) - 1.0) * 100.0 if qqq > 0 else 0.0
+        need = ((sma50 / ndx) - 1.0) * 100.0 if ndx > 0 else 0.0
         if need <= 0:
-            return f"Einstieg 50 %: QQQ über 50er ({sma50:.0f}) — wartet auf Bestätigung"
-        return f"Einstieg 50 % ab QQQ &gt; {sma50:.0f} ({need:+.1f} %)"
+            return f"Einstieg 50 %: {idx} über 50er ({fmt_pts(sma50)}) — wartet auf Bestätigung"
+        return f"Einstieg 50 % ab {idx} &gt; {fmt_pts(sma50)} ({need:+.1f} %)"
     if st == 1:
         up = float(core["sma200_up"])
-        need = ((up / qqq) - 1.0) * 100.0 if qqq > 0 else 0.0
-        return f"Bullenmarkt ab QQQ &gt; {up:.0f} ({need:+.1f} %) · Exit &lt; {core['sma50']:.0f}"
+        need = ((up / ndx) - 1.0) * 100.0 if ndx > 0 else 0.0
+        return f"Bullenmarkt ab {idx} &gt; {fmt_pts(up)} ({need:+.1f} %) · Exit &lt; {fmt_pts(core['sma50'])}"
     if st == 2:
         wait_for = []
         if not core["smart_fed_ok"]:
@@ -485,8 +487,8 @@ def _short_core_next_step(core: Dict[str, Any]) -> str:
         if not core["overheat_ok"]:
             wait_for.append("Abkühlung &lt;+22 %")
         w_txt = " + ".join(wait_for) if wait_for else "Freitag-Check"
-        return f"2×-Turbo ab: {w_txt} · Exit &lt; {core['sma200_dn']:.0f}"
-    return f"Bremse auf 50 % bei Vola &gt;28 % ({core['vol20']:.0f} %) oder Zins &gt;4 %↑ · Exit &lt; {core['sma200_dn']:.0f}"
+        return f"2×-Turbo ab: {w_txt} · Exit &lt; {fmt_pts(core['sma200_dn'])}"
+    return f"Bremse auf 50 % bei Vola &gt;28 % ({core['vol20']:.0f} %) oder Zins &gt;4 %↑ · Exit &lt; {fmt_pts(core['sma200_dn'])}"
 
 
 def build_alerts_and_messages(
@@ -614,6 +616,7 @@ def build_alerts_and_messages(
             blocks.append(
                 f"🏦 <b>CORE (70 %):</b> {c_em} Stufe {core['stage']} · {st_lbl}\n"
                 f"→ <b>{core['a0lc12_pct']} % A0LC12 · {core['dbx0an_pct']} % DBX0AN</b>\n"
+                f"→ {html.escape(str(core.get('index_name', 'Nasdaq-100')))}: <b>{fmt_pts(core.get('ndx', core['qqq']))} Pkt</b>\n"
                 f"→ {_short_core_next_step(core)}"
             )
 
@@ -827,7 +830,7 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
         <div class="light-pill"><span class="dot ${{volDot}}"></span><div><b>Vola (20/28)</b><br>${{fmt(c.vol20,1)}}%</div></div>
         <div class="light-pill"><span class="dot ${{ohDot}}"></span><div><b>Überhitzung</b><br>${{c.overheat_ok ? 'OK (<30%)' : 'BREMS'}}</div></div>
       </div>
-      <div class="trigger">➜ ${{c.next_trigger}}<br><span style="color:var(--muted);font-size:11px">QQQ: ${{fmt(c.qqq)}} | Freitags-Check | 2-Depot-LIFO | Drift-Cap 65%</span></div>
+      <div class="trigger">➜ ${{c.next_trigger}}<br><span style="color:var(--muted);font-size:11px">${{c.index_name || 'Nasdaq-100'}}: ${{Math.round(c.ndx || c.qqq).toLocaleString('de-DE')}} Pkt | Freitags-Check | 2-Depot-LIFO | Drift-Cap 65%</span></div>
     ` : '<div class="empty">Keine Core-Daten verfügbar.</div>';
 
     // Render Macro Card
