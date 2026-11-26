@@ -452,16 +452,12 @@ def _stage_action_hint(old_stage: Optional[int], new_stage: int) -> str:
     if new_stage == 0:
         return "→ Depot A &amp; B verkaufen · 100 % DBX0AN"
     if new_stage == 1:
-        if old_stage == 0 or old_stage is None:
-            return "→ 50 % A0LC12 in Depot A kaufen · 50 % DBX0AN"
-        return "→ 50 % A0LC12 (Depot A) · 50 % DBX0AN halten"
-    if new_stage == 2:
-        if old_stage == 3:
-            return "→ Nur Depot B (50 % A0LC12) verkaufen → DBX0AN"
-        if old_stage == 1:
-            return "→ Bleibt 50 % A0LC12 / 50 % DBX0AN (kein Trade)"
+        if old_stage == 2:
+            return "→ Nur Depot B (50 % A0LC12) verkaufen → DBX0AN (Depot A bleibt steuerfrei!)"
         return "→ 50 % A0LC12 in Depot A kaufen · 50 % DBX0AN"
-    return "→ DBX0AN (Depot B) in A0LC12 umschichten (100 % · 2×)"
+    if old_stage == 0 or old_stage is None:
+        return "→ 100 % A0LC12 (50 % Depot A + 50 % Depot B · voller 2×-Turbo!)"
+    return "→ DBX0AN (Depot B) in A0LC12 umschichten (100 % · 2×, 0 € Steuer auf Depot A!)"
 
 
 def _short_core_next_step(core: Dict[str, Any]) -> str:
@@ -471,24 +467,23 @@ def _short_core_next_step(core: Dict[str, Any]) -> str:
     if st == 0:
         sma50 = float(core["sma50"])
         need = ((sma50 / ndx) - 1.0) * 100.0 if ndx > 0 else 0.0
+        tgt_pct = "100 %" if (core["smart_fed_ok"] and core["vol_ok"] and core["overheat_ok"]) else "50 %"
         if need <= 0:
-            return f"Einstieg 50 %: {idx} über 50er ({fmt_pts(sma50)}) — wartet auf Bestätigung"
-        return f"Einstieg 50 % ab {idx} &gt; {fmt_pts(sma50)} ({need:+.1f} %)"
+            return f"Einstieg {tgt_pct}: {idx} über 50er ({fmt_pts(sma50)}) — wartet auf Bestätigung"
+        return f"Einstieg {tgt_pct} ab {idx} &gt; {fmt_pts(sma50)} ({need:+.1f} %)"
     if st == 1:
-        up = float(core["sma200_up"])
-        need = ((up / ndx) - 1.0) * 100.0 if ndx > 0 else 0.0
-        return f"Bullenmarkt ab {idx} &gt; {fmt_pts(up)} ({need:+.1f} %) · Exit &lt; {fmt_pts(core['sma50'])}"
-    if st == 2:
         wait_for = []
         if not core["smart_fed_ok"]:
             wait_for.append(f"Zins ≤4 %/GRÜN ({core['irx']:.2f} %)")
         if not core["vol_ok"]:
-            wait_for.append(f"Vola &lt;20 % ({core['vol20']:.0f} %)")
+            wait_for.append(f"Vola &lt;25 % ({core['vol20']:.0f} %)")
         if not core["overheat_ok"]:
             wait_for.append("Abkühlung &lt;+22 %")
         w_txt = " + ".join(wait_for) if wait_for else "Freitag-Check"
-        return f"2×-Turbo ab: {w_txt} · Exit &lt; {fmt_pts(core['sma200_dn'])}"
-    return f"Bremse auf 50 % bei Vola &gt;28 % ({core['vol20']:.0f} %) oder Zins &gt;4 %↑ · Exit &lt; {fmt_pts(core['sma200_dn'])}"
+        exit_pt = fmt_pts(core["sma200_dn"]) if core["sma200_band_ok"] else fmt_pts(core["sma50"])
+        return f"2×-Turbo ab: {w_txt} · Exit &lt; {exit_pt}"
+    exit_pt = fmt_pts(core["sma200_dn"]) if core["sma200_band_ok"] else fmt_pts(core["sma50"])
+    return f"Bremse auf 50 % bei Vola &gt;35 % ({core['vol20']:.0f} %) oder Zins &gt;4 %↑ · Exit &lt; {exit_pt}"
 
 
 def build_alerts_and_messages(
@@ -520,9 +515,9 @@ def build_alerts_and_messages(
         curr_live = int(core["live_stage"])
 
         if prev_core_stage is not None and curr_stage != int(prev_core_stage):
-            c_em = {0: "🔴", 1: "🟠", 2: "🟡", 3: "🟢"}.get(curr_stage, "⚪")
+            c_em = {0: "🔴", 1: "🟡", 2: "🟢"}.get(curr_stage, "⚪")
             urgent_blocks.append(
-                f"🏦 <b>CORE R1-F: {c_em} Stufe {prev_core_stage} → Stufe {curr_stage}</b>\n"
+                f"🏦 <b>CORE V-TURBO: {c_em} Stufe {prev_core_stage} → Stufe {curr_stage}</b>\n"
                 f"{_stage_action_hint(int(prev_core_stage), curr_stage)}"
             )
         elif (
@@ -610,8 +605,8 @@ def build_alerts_and_messages(
         blocks = [f"📊 <b>TradingPro · {html.escape(as_of)}</b>"]
 
         if core.get("available"):
-            c_em = {0: "🔴", 1: "🟠", 2: "🟡", 3: "🟢"}.get(int(core["stage"]), "⚪")
-            short_names = {0: "Cash", 1: "V-Frühtranche", 2: "Bullenmarkt 1×", 3: "Voller Turbo 2×"}
+            c_em = {0: "🔴", 1: "🟡", 2: "🟢"}.get(int(core["stage"]), "⚪")
+            short_names = {0: "Cash", 1: "Trend 1×", 2: "Voller Turbo 2×"}
             st_lbl = short_names.get(int(core["stage"]), str(core["stage_name"]))
             blocks.append(
                 f"🏦 <b>CORE (70 %):</b> {c_em} Stufe {core['stage']} · {st_lbl}\n"
@@ -811,13 +806,13 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
     hb.textContent = "Breite " + fmt(br.pct,1) + "% (" + br.buy + " BUY)";
     hb.className = "badge " + (br.pct >= 35 ? "b-BUY" : (br.pct >= 20 ? "b-WAIT" : "b-SELL"));
 
-    // Render Core R1-F Card
+    // Render 3-Stage V-Turbo Core Card
     const c = D.core;
-    const stageClass = {{0:"bg-red", 1:"bg-orange", 2:"bg-blue", 3:"bg-green"}}[c.stage] || "bg-red";
-    const volDot = (c.vol_ok && c.vol20 < 20) ? "dot-green" : (c.vol_stress ? "dot-red" : (c.vol_ok ? "dot-yellow" : "dot-red"));
+    const stageClass = {{0:"bg-red", 1:"bg-yellow", 2:"bg-green"}}[c.stage] || "bg-red";
+    const volDot = (c.vol_ok && c.vol20 < 25) ? "dot-green" : (c.vol_stress ? "dot-red" : (c.vol_ok ? "dot-yellow" : "dot-red"));
     const ohDot = (c.overheat_ok && c.vs_sma200_pct < 22) ? "dot-green" : (!c.overheat_ok ? "dot-red" : "dot-yellow");
     document.getElementById("core-card").innerHTML = c.available ? `
-      <div class="card-title">🏦 70%-Core R1-F (A0LC12 / DBX0AN)</div>
+      <div class="card-title">🏦 70%-Core V-Turbo (A0LC12 / DBX0AN)</div>
       <div class="stage-banner ${{stageClass}}">
         <span>STUFE ${{c.stage}} — ${{c.stage_name}}</span>
         <span>${{c.a0lc12_pct}}% A0LC12 / ${{c.dbx0an_pct}}% DBX0AN (${{fmt(c.eff_lev,1)}}×)</span>
@@ -827,7 +822,7 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
         <div class="light-pill"><span class="dot ${{c.sma50_ok?'dot-green':'dot-red'}}"></span><div><b>50er</b><br>${{fmtS(c.vs_sma50_pct)}}%</div></div>
         <div class="light-pill"><span class="dot ${{c.sma200_band_ok?'dot-green':'dot-red'}}"></span><div><b>200er (+2,5/-3%)</b><br>${{fmtS(c.vs_sma200_pct)}}%</div></div>
         <div class="light-pill"><span class="dot ${{c.smart_fed_ok?'dot-green':'dot-red'}}"></span><div><b>Smart-Zins &gt;4%</b><br>${{fmt(c.irx)}}%</div></div>
-        <div class="light-pill"><span class="dot ${{volDot}}"></span><div><b>Vola (20/28)</b><br>${{fmt(c.vol20,1)}}%</div></div>
+        <div class="light-pill"><span class="dot ${{volDot}}"></span><div><b>Vola (25/35)</b><br>${{fmt(c.vol20,1)}}%</div></div>
         <div class="light-pill"><span class="dot ${{ohDot}}"></span><div><b>Überhitzung</b><br>${{c.overheat_ok ? 'OK (<30%)' : 'BREMS'}}</div></div>
       </div>
       <div class="trigger">➜ ${{c.next_trigger}}<br><span style="color:var(--muted);font-size:11px">${{c.index_name || 'Nasdaq-100'}}: ${{Math.round(c.ndx || c.qqq).toLocaleString('de-DE')}} Pkt | Freitags-Check | 2-Depot-LIFO | Drift-Cap 65%</span></div>
