@@ -260,8 +260,9 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
         df["sig_qqq200_band"] = _apply_sma200_band(idx_s, df["QQQ_sma200"], up_buf=0.025, dn_buf=0.030)
         vol20_raw = idx_s.pct_change().rolling(20).std() * np.sqrt(252.0) * 100.0
         df["QQQ_vol20"] = vol20_raw.rolling(5).mean()
-        df["sig_vol_band"] = _apply_vol_band(df["QQQ_vol20"], lo=20.0, hi=28.0)
-        # R1-F: Overheating hysteresis brake (> +30% vs SMA200 trims 2x -> 1x; re-enables < +22%)
+        # V-Turbo: Nasdaq-100 calibrated volatility band (exit 2x > 35%, re-enable < 25%)
+        df["sig_vol_band"] = _apply_vol_band(df["QQQ_vol20"], lo=25.0, hi=35.0)
+        # Overheating hysteresis brake (> +30% vs SMA200 trims 2x -> 1x; re-enables < +22%)
         df["sig_not_overheat"] = _apply_vol_band(df["QQQ_ext200"], lo=22.0, hi=30.0)
     else:
         df["NDX_ref"] = np.nan
@@ -303,7 +304,7 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
     df["macro_fed_plus_qqq50"] = _apply_confirmation(raw_fed_qqq50, days=3)
     df["macro_strict_liq"] = _apply_confirmation(raw_strict, days=3)
 
-    # R1-F 4-Stage Core Allocation (A0LC12 2x Nasdaq UCITS / DBX0AN Money Market)
+    # 3-Stage V-Turbo Core Allocation (A0LC12 2x Nasdaq UCITS / DBX0AN Money Market)
     # Smart-Rate Gate: only blocks 2x Turbo when IRX > 4.0% AND rising (sig_fed == 0)
     if "IRX" in df.columns:
         df["sig_fed_smart4"] = (~((df["IRX"] > 4.0) & (df["sig_fed"] == 0))).astype(int)
@@ -312,14 +313,12 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
 
     s200 = df["sig_qqq200_band"] == 1
     s50 = df["sig_qqq50_3d"] == 1
-    fed_smart = df["sig_fed_smart4"] == 1
-    vol_calm = df["sig_vol_band"] == 1
-    not_oh = df["sig_not_overheat"] == 1
+    trend_up = s200 | s50
+    turbo_ok = (df["sig_fed_smart4"] == 1) & (df["sig_vol_band"] == 1) & (df["sig_not_overheat"] == 1)
 
     core_daily = np.zeros(len(df), dtype=int)
-    core_daily[(~s200 & s50).values] = 1
-    core_daily[(s200 & (~fed_smart | ~vol_calm | ~not_oh)).values] = 2
-    core_daily[(s200 & fed_smart & vol_calm & not_oh).values] = 3
+    core_daily[(trend_up & ~turbo_ok).values] = 1
+    core_daily[(trend_up & turbo_ok).values] = 2
     df["core_stage_daily"] = core_daily
 
     # Weekly / Friday-confirmed active stage (changes only on last trading day of each week)
@@ -341,8 +340,8 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]:
-    """Computes live R1-F 4-Stage Core-Allocation status (A0LC12 2x Nasdaq / DBX0AN Money Market)
-    referenced to Nasdaq-100 points (^NDX), exact distances, and next action hint.
+    """Computes live 3-Stage V-Turbo Core-Allocation status (A0LC12 2x Nasdaq / DBX0AN Money Market)
+    referenced to Nasdaq-100 points (^NDX), Vola-Band 25/35, Smart-Rate >4%, and Overheating <30%.
     """
     if mdf is None or mdf.empty or "QQQ_sma200" not in mdf.columns:
         return {"available": False}
@@ -376,7 +375,7 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
     smart_fed_ok = int(last.get("sig_fed_smart4", 1)) == 1
     vol20 = float(last.get("QQQ_vol20", np.nan))
     vol_ok = int(last.get("sig_vol_band", 0)) == 1
-    vol_stress = pd.notna(vol20) and vol20 > 28.0
+    vol_stress = pd.notna(vol20) and vol20 > 35.0
     overheat_ok = int(last.get("sig_not_overheat", 1)) == 1
 
     stage = int(last.get("core_stage", 0))
@@ -386,53 +385,47 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
 
     stage_meta = {
         0: (0, 100, 0.0, "CRASH-SCHUTZ", "inverse-danger", "#ff4d4d"),
-        1: (50, 50, 1.0, "V-FRÜHTRANCHE", "inverse-warning", "#ff9f43"),
-        2: (50, 50, 1.0, "BULLENMARKT (1×)", "inverse-info", "#0dcaf0"),
-        3: (100, 0, 2.0, "VOLLER TURBO (2×)", "inverse-success", "#2ecc71"),
+        1: (50, 50, 1.0, "TREND (1×)", "inverse-warning", "#f1c40f"),
+        2: (100, 0, 2.0, "VOLLER TURBO (2×)", "inverse-success", "#2ecc71"),
     }
     a0lc12_pct, dbx0an_pct, eff_lev, stage_name, bootstyle, color_hex = stage_meta.get(
         stage, stage_meta[0]
     )
 
     if stage == 0:
+        turbo_ready = smart_fed_ok and vol_ok and overheat_ok
+        next_lbl = "Stufe 2 / 100% A0LC12" if turbo_ready else "Stufe 1 / 50% A0LC12"
         if sma50_raw_ok:
             next_trigger = (
-                f"Nächster Schritt (Stufe 1 / 50% A0LC12): {idx_name} > SMA50 ({fmt_pts(sma50)}) wartet auf 3T-/Freitags-Bestätigung"
+                f"Einstieg ({next_lbl}): {idx_name} > SMA50 ({fmt_pts(sma50)}) wartet auf 3T-/Freitags-Bestätigung"
             )
         else:
             need_pct = ((sma50 / qqq) - 1.0) * 100.0
             next_trigger = (
-                f"Nächster Schritt (Stufe 1 / 50% A0LC12): {idx_name} > SMA50 ({fmt_pts(sma50)}, noch {need_pct:+.1f}%)"
+                f"Einstieg ({next_lbl}): {idx_name} > SMA50 ({fmt_pts(sma50)}, noch {need_pct:+.1f}%)"
             )
     elif stage == 1:
-        need_up = ((sma200_up / qqq) - 1.0) * 100.0
-        next_trigger = (
-            f"Aufstieg (Stufe 2/3): {idx_name} > {fmt_pts(sma200_up)} (+2,5% über SMA200, noch {need_up:+.1f}%)  |  "
-            f"Exit (Stufe 0): {idx_name} < SMA50 ({fmt_pts(sma50)}, Puffer {vs_sma50_pct:+.1f}%)"
-        )
-    elif stage == 2:
         blockers = []
         if not smart_fed_ok:
-            blockers.append(f"Smart-Zins (IRX {irx_val:.2f}% ≤ 4% oder Fed GRÜN)")
+            blockers.append(f"Zins ≤4%/GRÜN (akt. {irx_val:.2f}%)")
         if not vol_ok:
-            blockers.append(f"20T-Vola < 20% (Band 20/28%, akt. {vol20:.1f}%)")
+            blockers.append(f"Vola < 25% (Band 25/35%, akt. {vol20:.1f}%)")
         if not overheat_ok:
-            blockers.append(f"Überhitzung < +22% vs SMA200 (akt. {vs_sma200_pct:+.1f}%)")
+            blockers.append(f"Ext200 < +22% (akt. {vs_sma200_pct:+.1f}%)")
         blocker_str = " + ".join(blockers) if blockers else "Freitags-Check abwarten"
-        next_trigger = (
-            f"Turbo (Stufe 3 / 100% A0LC12): {blocker_str}  |  "
-            f"Exit-Puffer (SMA200 -3% = {fmt_pts(sma200_dn)}): {vs_band_dn_pct:+.1f}%"
-        )
+        exit_ref = f"SMA200 -3% ({fmt_pts(sma200_dn)}, {vs_band_dn_pct:+.1f}%)" if sma200_band_ok else f"SMA50 ({fmt_pts(sma50)}, {vs_sma50_pct:+.1f}%)"
+        next_trigger = f"2×-Turbo (Stufe 2 / 100% A0LC12): {blocker_str}  |  Exit-Puffer: {exit_ref}"
     else:
+        exit_ref = f"SMA200 -3% ({fmt_pts(sma200_dn)}, {vs_band_dn_pct:+.1f}%)" if sma200_band_ok else f"SMA50 ({fmt_pts(sma50)}, {vs_sma50_pct:+.1f}%)"
         next_trigger = (
-            f"Bremse → 50% (Depot B verkaufen): bei (IRX>4% & Fed ROT), Vola > 28% ({vol20:.1f}%) oder Ext200 > +30% ({vs_sma200_pct:+.1f}%)  |  "
-            f"Exit-Puffer (-3% = {fmt_pts(sma200_dn)}): {vs_band_dn_pct:+.1f}%"
+            f"Bremse → 50% (Depot B verkaufen): bei (Zins>4%↑), Vola > 35% ({vol20:.1f}%) oder Ext200 > +30% ({vs_sma200_pct:+.1f}%)  |  "
+            f"Exit-Puffer: {exit_ref}"
         )
 
     if weekly_pending:
         next_trigger = f"⏳ Live-Vorschau: Stufe {live_stage} (erst am Freitagabend umsetzen!)  |  {next_trigger}"
     elif vol_stress and stage > 0:
-        next_trigger = f"⚠️ Vola-Stress ({vol20:.1f}% > 28%)  |  {next_trigger}"
+        next_trigger = f"⚠️ Vola-Stress ({vol20:.1f}% > 35%)  |  {next_trigger}"
 
     return {
         "available": True,
