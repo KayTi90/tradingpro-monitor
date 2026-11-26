@@ -1,0 +1,53 @@
+name: TradingPro Daily Signal & Telegram Monitor
+
+on:
+  schedule:
+    # Mo-Fr um 21:30 UTC (= 22:30 MEZ Winterzeit / 23:30 MESZ Sommerzeit, direkt nach US-Börsenschluss)
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      force_summary:
+        description: "Kompletten Status-Bericht per Telegram schicken?"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Abhängigkeiten installieren
+        run: pip install -r requirements_monitor.txt
+
+      - name: Signale berechnen, Mobile Dashboard bauen & Telegram senden
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+        run: |
+          if [ "${{ github.event.inputs.force_summary }}" = "true" ]; then
+            python run_monitor.py --force-summary
+          else
+            python run_monitor.py
+          fi
+
+      - name: Status & Mobile Dashboard (docs/index.html) aktualisieren
+        run: |
+          git config user.name "TradingPro Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add monitor_state.json docs/index.html docs/manifest.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update signals & mobile dashboard"
+            git push
+          fi
