@@ -1,0 +1,9 @@
+{
+  "name": "TradingPro Mobile",
+  "short_name": "TradingPro",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#12151a",
+  "theme_color": "#12151a",
+  "description": "Core R1-F Ampel, Makro-Liquidität & 128-Aktien Supertrend Monitor"
+}
