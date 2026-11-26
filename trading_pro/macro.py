@@ -305,16 +305,11 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
     df["macro_strict_liq"] = _apply_confirmation(raw_strict, days=3)
 
     # 3-Stage V-Turbo Core Allocation (A0LC12 2x Nasdaq UCITS / DBX0AN Money Market)
-    # Smart-Rate Gate: only blocks 2x Turbo when IRX > 4.0% AND rising (sig_fed == 0)
-    if "IRX" in df.columns:
-        df["sig_fed_smart4"] = (~((df["IRX"] > 4.0) & (df["sig_fed"] == 0))).astype(int)
-    else:
-        df["sig_fed_smart4"] = 1
-
+    # Pure price-trend + volatility + overheating (no rate-whipsaw noise in Core!)
     s200 = df["sig_qqq200_band"] == 1
     s50 = df["sig_qqq50_3d"] == 1
     trend_up = s200 | s50
-    turbo_ok = (df["sig_fed_smart4"] == 1) & (df["sig_vol_band"] == 1) & (df["sig_not_overheat"] == 1)
+    turbo_ok = (df["sig_vol_band"] == 1) & (df["sig_not_overheat"] == 1)
 
     core_daily = np.zeros(len(df), dtype=int)
     core_daily[(trend_up & ~turbo_ok).values] = 1
@@ -393,7 +388,7 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
     )
 
     if stage == 0:
-        turbo_ready = smart_fed_ok and vol_ok and overheat_ok
+        turbo_ready = vol_ok and overheat_ok
         next_lbl = "Stufe 2 / 100% A0LC12" if turbo_ready else "Stufe 1 / 50% A0LC12"
         if sma50_raw_ok:
             next_trigger = (
@@ -406,8 +401,6 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
             )
     elif stage == 1:
         blockers = []
-        if not smart_fed_ok:
-            blockers.append(f"Zins ≤4%/GRÜN (akt. {irx_val:.2f}%)")
         if not vol_ok:
             blockers.append(f"Vola < 25% (Band 25/35%, akt. {vol20:.1f}%)")
         if not overheat_ok:
@@ -418,7 +411,7 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
     else:
         exit_ref = f"SMA200 -3% ({fmt_pts(sma200_dn)}, {vs_band_dn_pct:+.1f}%)" if sma200_band_ok else f"SMA50 ({fmt_pts(sma50)}, {vs_sma50_pct:+.1f}%)"
         next_trigger = (
-            f"Bremse → 50% (Depot B verkaufen): bei (Zins>4%↑), Vola > 35% ({vol20:.1f}%) oder Ext200 > +30% ({vs_sma200_pct:+.1f}%)  |  "
+            f"Bremse → 50% (Depot B verkaufen): bei Vola > 35% ({vol20:.1f}%) oder Ext200 > +30% ({vs_sma200_pct:+.1f}%)  |  "
             f"Exit-Puffer: {exit_ref}"
         )
 
