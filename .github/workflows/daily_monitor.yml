@@ -2,8 +2,9 @@ name: TradingPro Daily Signal & Telegram Monitor
 
 on:
   schedule:
-    # Mo-Fr um 21:30 UTC (= 22:30 MEZ Winterzeit / 23:30 MESZ Sommerzeit, direkt nach US-Börsenschluss)
-    - cron: "30 21 * * 1-5"
+    # Mo-Fr exakt 07:00 Uhr deutscher Zeit (Sommerzeit MESZ = 05:00 UTC, Winterzeit MEZ = 06:00 UTC)
+    - cron: "0 5 * * 1-5"
+    - cron: "0 6 * * 1-5"
   workflow_dispatch:
     inputs:
       force_summary:
@@ -18,10 +19,24 @@ jobs:
   monitor:
     runs-on: ubuntu-latest
     steps:
+      - name: Prüfe 07:00 Uhr deutscher Zeit (Sommer-/Winterzeit-Weiche)
+        id: tz_check
+        run: |
+          HOUR_DE=$(TZ="Europe/Berlin" date +%H)
+          echo "Aktuelle Uhrzeit (Europe/Berlin): ${HOUR_DE} Uhr | Event: ${{ github.event_name }}"
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$HOUR_DE" != "07" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Überspringe diesen UTC-Slot (nicht 07:00 Uhr deutscher Zeit)."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Repository auschecken
+        if: steps.tz_check.outputs.run == 'true'
         uses: actions/checkout@v4
 
       - name: Python 3.12 einrichten
+        if: steps.tz_check.outputs.run == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -29,9 +44,11 @@ jobs:
           cache-dependency-path: "requirements_monitor.txt"
 
       - name: Abhängigkeiten installieren
+        if: steps.tz_check.outputs.run == 'true'
         run: pip install -r requirements_monitor.txt
 
       - name: Signale berechnen, Mobile Dashboard bauen & Telegram senden
+        if: steps.tz_check.outputs.run == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -44,6 +61,7 @@ jobs:
           fi
 
       - name: Status & Mobile Dashboard (docs/index.html) aktualisieren
+        if: steps.tz_check.outputs.run == 'true'
         run: |
           git config user.name "TradingPro Bot"
           git config user.email "bot@users.noreply.github.com"
