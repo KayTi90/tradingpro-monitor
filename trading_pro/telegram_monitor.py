@@ -371,7 +371,7 @@ def evaluate_all_signals(
     name_map = {str(item["ticker"]): str(item.get("name") or item["ticker"]) for item in tickers_meta}
 
     if not use_cache_only and ticker_list:
-        download_tickers_parallel(ticker_list, force_download=True)
+        download_tickers_parallel(ticker_list)
 
     rows: List[Dict[str, Any]] = []
     failed = 0
