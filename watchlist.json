@@ -1,0 +1,540 @@
+{
+  "synced_at": "2026-11-26T10:44:30Z",
+  "tickers": [
+    {
+      "ticker": "002230.SZ",
+      "name": "IFLYTEK"
+    },
+    {
+      "ticker": "0981.HK",
+      "name": "SMIC"
+    },
+    {
+      "ticker": "1211.HK",
+      "name": "BYD COMPANY"
+    },
+    {
+      "ticker": "2590.HK",
+      "name": "GEEKPLUS-W"
+    },
+    {
+      "ticker": "81810.HK",
+      "name": "XIAOMI-WR"
+    },
+    {
+      "ticker": "9660.HK",
+      "name": "HORIZONROBOT-W"
+    },
+    {
+      "ticker": "9880.HK",
+      "name": "UBTECH ROBOTICS"
+    },
+    {
+      "ticker": "9988.HK",
+      "name": "BABA-W"
+    },
+    {
+      "ticker": "AAOI",
+      "name": "Applied Optoelectronics, Inc."
+    },
+    {
+      "ticker": "ACHR",
+      "name": "Archer Aviation Inc."
+    },
+    {
+      "ticker": "AEVA",
+      "name": "Aeva Technologies, Inc."
+    },
+    {
+      "ticker": "AIRO",
+      "name": "AIRO Group Holdings, Inc."
+    },
+    {
+      "ticker": "ALAB",
+      "name": "Astera Labs, Inc."
+    },
+    {
+      "ticker": "ALM",
+      "name": "Almonty Industries Inc."
+    },
+    {
+      "ticker": "AMBA",
+      "name": "Ambarella, Inc."
+    },
+    {
+      "ticker": "APP",
+      "name": "Applovin Corporation"
+    },
+    {
+      "ticker": "ARBE",
+      "name": "Arbe Robotics Ltd."
+    },
+    {
+      "ticker": "ARM",
+      "name": "Arm Holdings plc"
+    },
+    {
+      "ticker": "ASPI",
+      "name": "ASP Isotopes Inc."
+    },
+    {
+      "ticker": "ASPN",
+      "name": "Aspen Aerogels, Inc."
+    },
+    {
+      "ticker": "ASTC",
+      "name": "Astrotech Corporation"
+    },
+    {
+      "ticker": "ASTS",
+      "name": "AST SpaceMobile, Inc."
+    },
+    {
+      "ticker": "AVAV",
+      "name": "AeroVironment, Inc."
+    },
+    {
+      "ticker": "BBAI",
+      "name": "BigBear.ai, Inc."
+    },
+    {
+      "ticker": "BIDU",
+      "name": "Baidu, Inc."
+    },
+    {
+      "ticker": "BKSY",
+      "name": "BlackSky Technology Inc."
+    },
+    {
+      "ticker": "BRN.AX",
+      "name": "BRAINCHIP FPO [BRN]"
+    },
+    {
+      "ticker": "BROS",
+      "name": "Dutch Bros Inc."
+    },
+    {
+      "ticker": "BTC-USD",
+      "name": "Bitcoin USD"
+    },
+    {
+      "ticker": "CLSK",
+      "name": "CleanSpark, Inc."
+    },
+    {
+      "ticker": "COIN",
+      "name": "Coinbase Global, Inc."
+    },
+    {
+      "ticker": "CORZ",
+      "name": "Core Scientific, Inc."
+    },
+    {
+      "ticker": "CRCL",
+      "name": "Circle Internet Group, Inc."
+    },
+    {
+      "ticker": "CVNA",
+      "name": "Carvana Co."
+    },
+    {
+      "ticker": "DGXX",
+      "name": "Digi Power X Inc."
+    },
+    {
+      "ticker": "DMRC",
+      "name": "Digimarc Corporation"
+    },
+    {
+      "ticker": "DRO.AX",
+      "name": "DRONE FPO [DRO]"
+    },
+    {
+      "ticker": "EH",
+      "name": "EHang Holdings Limited"
+    },
+    {
+      "ticker": "ENPH",
+      "name": "Enphase Energy, Inc."
+    },
+    {
+      "ticker": "ENVX",
+      "name": "Enovix Corporation"
+    },
+    {
+      "ticker": "EOSE",
+      "name": "Eos Energy Enterprises, Inc."
+    },
+    {
+      "ticker": "FIGR",
+      "name": "Figure Technology Solutions, In"
+    },
+    {
+      "ticker": "FLY",
+      "name": "Firefly Aerospace Inc."
+    },
+    {
+      "ticker": "GALT",
+      "name": "Galectin Therapeutics Inc."
+    },
+    {
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc."
+    },
+    {
+      "ticker": "HGRAF",
+      "name": "HydroGraph Clean Power Inc."
+    },
+    {
+      "ticker": "HIMS",
+      "name": "Hims & Hers Health, Inc."
+    },
+    {
+      "ticker": "INFQ",
+      "name": "Infleqtion, Inc."
+    },
+    {
+      "ticker": "INOD",
+      "name": "Innodata Inc."
+    },
+    {
+      "ticker": "IONQ",
+      "name": "IonQ, Inc."
+    },
+    {
+      "ticker": "IOVA",
+      "name": "Iovance Biotherapeutics, Inc."
+    },
+    {
+      "ticker": "ISRG",
+      "name": "Intuitive Surgical, Inc."
+    },
+    {
+      "ticker": "JKS",
+      "name": "JinkoSolar Holding Company Limi"
+    },
+    {
+      "ticker": "JOBY",
+      "name": "Joby Aviation, Inc."
+    },
+    {
+      "ticker": "KEEL",
+      "name": "Keel Infrastructure Corp."
+    },
+    {
+      "ticker": "KLAR",
+      "name": "Klarna Group plc"
+    },
+    {
+      "ticker": "KOPN",
+      "name": "Kopin Corporation"
+    },
+    {
+      "ticker": "KRKNF",
+      "name": "Kraken Robotics Inc."
+    },
+    {
+      "ticker": "KTOS",
+      "name": "Kratos Defense & Security Solut"
+    },
+    {
+      "ticker": "KYCCF",
+      "name": "Keyence Corp."
+    },
+    {
+      "ticker": "LAES",
+      "name": "SEALSQ Corp"
+    },
+    {
+      "ticker": "LFMD",
+      "name": "LifeMD, Inc."
+    },
+    {
+      "ticker": "LHA.DE",
+      "name": "DEUTSCHE LUFTHANSA AG         V"
+    },
+    {
+      "ticker": "LITE",
+      "name": "Lumentum Holdings Inc."
+    },
+    {
+      "ticker": "LOVE",
+      "name": "The Lovesac Company"
+    },
+    {
+      "ticker": "LUNR",
+      "name": "Intuitive Machines, Inc."
+    },
+    {
+      "ticker": "MARA",
+      "name": "MARA Holdings, Inc."
+    },
+    {
+      "ticker": "MBLY",
+      "name": "Mobileye Global Inc."
+    },
+    {
+      "ticker": "MSTR",
+      "name": "Strategy Inc"
+    },
+    {
+      "ticker": "NEL.OL",
+      "name": "NEL"
+    },
+    {
+      "ticker": "NFLX",
+      "name": "Netflix, Inc."
+    },
+    {
+      "ticker": "NIO",
+      "name": "NIO Inc."
+    },
+    {
+      "ticker": "NNE",
+      "name": "Nano Nuclear Energy Inc."
+    },
+    {
+      "ticker": "NRXP",
+      "name": "NRX Pharmaceuticals, Inc."
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corporation"
+    },
+    {
+      "ticker": "NXPI",
+      "name": "NXP Semiconductors N.V."
+    },
+    {
+      "ticker": "OKLO",
+      "name": "Oklo Inc."
+    },
+    {
+      "ticker": "ONDS",
+      "name": "Ondas Inc"
+    },
+    {
+      "ticker": "OUST",
+      "name": "Ouster, Inc."
+    },
+    {
+      "ticker": "PACB",
+      "name": "Pacific Biosciences of Californ"
+    },
+    {
+      "ticker": "PCT",
+      "name": "PureCycle Technologies, Inc."
+    },
+    {
+      "ticker": "PL",
+      "name": "Planet Labs PBC"
+    },
+    {
+      "ticker": "PLUG",
+      "name": "Plug Power, Inc."
+    },
+    {
+      "ticker": "PME.AX",
+      "name": "PROMEDICUS FPO [PME]"
+    },
+    {
+      "ticker": "POET",
+      "name": "POET Technologies Inc."
+    },
+    {
+      "ticker": "PONY",
+      "name": "Pony AI Inc."
+    },
+    {
+      "ticker": "QBTS",
+      "name": "D-Wave Quantum Inc."
+    },
+    {
+      "ticker": "QS",
+      "name": "QuantumScape Corporation"
+    },
+    {
+      "ticker": "QUIK",
+      "name": "QuickLogic Corporation"
+    },
+    {
+      "ticker": "RCAT",
+      "name": "Red Cat Holdings, Inc."
+    },
+    {
+      "ticker": "RDDT",
+      "name": "Reddit, Inc."
+    },
+    {
+      "ticker": "RDW",
+      "name": "Redwire Corporation"
+    },
+    {
+      "ticker": "RGTI",
+      "name": "Rigetti Computing, Inc."
+    },
+    {
+      "ticker": "RKLB",
+      "name": "Rocket Lab Corporation"
+    },
+    {
+      "ticker": "RR",
+      "name": "Richtech Robotics Inc."
+    },
+    {
+      "ticker": "RRX",
+      "name": "Regal Rexnord Corporation"
+    },
+    {
+      "ticker": "RUN",
+      "name": "Sunrun Inc."
+    },
+    {
+      "ticker": "RZLV",
+      "name": "Rezolve AI PLC"
+    },
+    {
+      "ticker": "SATL",
+      "name": "Satellogic Inc."
+    },
+    {
+      "ticker": "SEAS.CN",
+      "name": "DeepSeaMrl"
+    },
+    {
+      "ticker": "SEDG",
+      "name": "SolarEdge Technologies, Inc."
+    },
+    {
+      "ticker": "SEI-USD",
+      "name": "Sei USD"
+    },
+    {
+      "ticker": "SERV",
+      "name": "Serve Robotics Inc."
+    },
+    {
+      "ticker": "SLI",
+      "name": "Standard Lithium Ltd."
+    },
+    {
+      "ticker": "SLV",
+      "name": "iShares Silver Trust"
+    },
+    {
+      "ticker": "SMCI",
+      "name": "Super Micro Computer, Inc."
+    },
+    {
+      "ticker": "SMR",
+      "name": "NuScale Power Corporation"
+    },
+    {
+      "ticker": "SOFI",
+      "name": "SoFi Technologies, Inc."
+    },
+    {
+      "ticker": "SOL-USD",
+      "name": "Solana USD"
+    },
+    {
+      "ticker": "SOUN",
+      "name": "SoundHound AI, Inc."
+    },
+    {
+      "ticker": "SUI20947-USD",
+      "name": "Sui USD"
+    },
+    {
+      "ticker": "SWMR",
+      "name": "Swarmer, Inc"
+    },
+    {
+      "ticker": "TLRY",
+      "name": "Tilray Brands, Inc."
+    },
+    {
+      "ticker": "TUI1.DE",
+      "name": "TUI AG                        N"
+    },
+    {
+      "ticker": "TWST",
+      "name": "Twist Bioscience Corporation"
+    },
+    {
+      "ticker": "UA",
+      "name": "Under Armour, Inc."
+    },
+    {
+      "ticker": "UEC",
+      "name": "Uranium Energy Corp."
+    },
+    {
+      "ticker": "UMAC",
+      "name": "Unusual Machines, Inc."
+    },
+    {
+      "ticker": "UUUU",
+      "name": "Energy Fuels Inc"
+    },
+    {
+      "ticker": "VERI",
+      "name": "Veritone, Inc."
+    },
+    {
+      "ticker": "VKTX",
+      "name": "Viking Therapeutics, Inc."
+    },
+    {
+      "ticker": "VUZI",
+      "name": "Vuzix Corporation"
+    },
+    {
+      "ticker": "VWAV",
+      "name": "VisionWave Holdings, Inc."
+    },
+    {
+      "ticker": "WATT",
+      "name": "Energous Corporation"
+    },
+    {
+      "ticker": "XYZ",
+      "name": "Block, Inc."
+    },
+    {
+      "ticker": "YSS",
+      "name": "York Space Systems Inc."
+    },
+    {
+      "ticker": "ZBRA",
+      "name": "Zebra Technologies Corporation"
+    },
+    {
+      "ticker": "ZENA",
+      "name": "ZenaTech, Inc."
+    }
+  ],
+  "depot": [],
+  "settings": {
+    "config_version": 3,
+    "atr_len": 10,
+    "base_factor": 3.0,
+    "macro_filter_mode": "fed_plus_qqq50",
+    "anti_chase_max_ext_pct": 25.0,
+    "fresh_flip_bars": 3,
+    "use_weekly_filter": false,
+    "use_div_adaptive": false,
+    "div_sens": 0.3,
+    "piv_len": 2,
+    "osc_len": 6,
+    "osc_smooth": 7,
+    "div_bars": 200,
+    "exec_next_open": true,
+    "fee_pct": 0.1,
+    "slippage_pct": 0.05,
+    "breadth_threshold": 35.0,
+    "portfolio_eur": 25000.0,
+    "risk_per_trade_pct": 1.0,
+    "max_position_pct": 15.0
+  }
+}
