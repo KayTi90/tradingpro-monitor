@@ -59,11 +59,27 @@ def sync_watchlist_from_local_db(watchlist_path: str = WATCHLIST_FILE) -> Option
         ]
         depot = sorted(db.get_depot_tickers())
         settings = db.load_settings()
+        # Export cached SEC Dilution / Fundamentals badges as lightweight cloud fallback
+        fund_cache: Dict[str, Dict[str, Any]] = {}
+        try:
+            import sqlite3
+            with sqlite3.connect(db.DB_FILE, timeout=10) as conn:
+                for sym_f, rl, rb, lod in conn.execute(
+                    "SELECT ticker, risk_level, risk_badge, last_offering_date FROM ticker_fundamentals"
+                ):
+                    fund_cache[str(sym_f).upper()] = {
+                        "risk_level": int(rl) if rl is not None else -1,
+                        "risk_badge": str(rb or "—"),
+                        "last_offering_date": str(lod or ""),
+                    }
+        except Exception:
+            pass
         payload = {
             "synced_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "tickers": tickers,
             "depot": depot,
             "settings": settings,
+            "fundamentals_cache": fund_cache,
         }
         with open(watchlist_path, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, indent=2, ensure_ascii=False)
@@ -83,10 +99,20 @@ def load_watchlist_config(watchlist_path: str = WATCHLIST_FILE) -> Dict[str, Any
     with open(watchlist_path, "r", encoding="utf-8") as fh:
         data = json.load(fh)
     settings = dict(DEFAULT_STRATEGY_CONFIG)
+    settings.update(
+        {
+            "sat_max_slots": 15,
+            "sat_pos_eur": 2000.0,
+            "sat_park_in_core": True,
+            "k4_breadth_min_pct": 50.0,
+            "k4_max_from_52w_hi_pct": -20.0,
+        }
+    )
     settings.update(data.get("settings") or {})
     data["settings"] = settings
     data["depot"] = list(data.get("depot") or [])
     data["tickers"] = list(data.get("tickers") or [])
+    data["fundamentals_cache"] = dict(data.get("fundamentals_cache") or {})
     return data
 
 
@@ -253,11 +279,19 @@ CLOUD_UPLOAD_FILES: List[str] = [
     "watchlist.json",
     "trading_pro/__init__.py",
     "trading_pro/data_loader.py",
+    "trading_pro/fundamentals.py",
     "trading_pro/macro.py",
     "trading_pro/strategy.py",
     "trading_pro/telegram_monitor.py",
     "docs/index.html",
     "docs/manifest.json",
+    "docs/sw.js",
+    "docs/icon-192.png",
+    "docs/icon-512.png",
+    "docs/icon-maskable-192.png",
+    "docs/icon-maskable-512.png",
+    "docs/apple-touch-icon.png",
+    "docs/favicon-32.png",
     ".github/workflows/daily_monitor.yml",
 ]
 
@@ -354,25 +388,66 @@ def send_telegram_message(
     return True, f"{len(chunks)} Nachricht(en) gesendet"
 
 
+def _core_funding_hint(stage: int, amount_eur: float, park_in_core: bool = True) -> str:
+    """Exact broker instruction on where to pull `amount_eur` from when opening Satellite slot(s)."""
+    amt = f"{amount_eur:,.0f} €".replace(",", ".")
+    if not park_in_core or stage == 0:
+        return f"💸 {amt} aus <b>DBX0AN</b> (Geldmarkt) freimachen"
+    if stage == 1:
+        half = f"{amount_eur / 2.0:,.0f} €".replace(",", ".")
+        return f"💸 {amt} aus CORE freimachen: <b>{half} A0LC12 (Depot B / LIFO)</b> + <b>{half} DBX0AN</b> verkaufen"
+    return f"💸 {amt} aus CORE freimachen: <b>{amt} A0LC12 aus Depot B (LIFO)</b> verkaufen"
+
+
+def _core_return_hint(stage: int, park_in_core: bool = True) -> str:
+    """Exact broker instruction on where to park Satellite sale proceeds."""
+    if not park_in_core or stage == 0:
+        return "→ Erlös in <b>DBX0AN</b> (Geldmarkt) parken"
+    if stage == 1:
+        return "→ Erlös zurück in CORE (Stufe 1): <b>50 % A0LC12 (Depot B) + 50 % DBX0AN</b>"
+    return "→ Erlös zurück in CORE (Stufe 2): <b>100 % A0LC12 (Depot B)</b>"
+
+
 def evaluate_all_signals(
     wl_cfg: Dict[str, Any],
     use_cache_only: bool = False,
 ) -> Dict[str, Any]:
-    """Downloads/loads macro + all watchlist tickers and computes Core R1-F, Macro & Supertrend signals."""
+    """Downloads/loads macro + all watchlist tickers and computes Core V-Turbo, Macro,
+    Supertrend & K4+SEC Autopilot order plan (15 slots à 2.000 €, idle cash parked in Core).
+    """
     settings = wl_cfg["settings"]
     tickers_meta = wl_cfg["tickers"]
     depot_set = {str(t).upper() for t in wl_cfg.get("depot", [])}
+    fund_cache: Dict[str, Dict[str, Any]] = {
+        str(k).upper(): dict(v) for k, v in (wl_cfg.get("fundamentals_cache") or {}).items()
+    }
 
     macro_df = load_macro_data(force_download=not use_cache_only)
     core = get_core_allocation_status(macro_df)
     snap = get_latest_macro_snapshot(macro_df)
     diag = get_macro_flip_diagnostics(macro_df)
 
+    # Benchmark 63-day return for K4 Relative Strength filter (3M stock > 3M Nasdaq-100)
+    ndx_ret63_pct = 0.0
+    try:
+        ref_col = "NDX_ref" if "NDX_ref" in macro_df.columns else ("QQQ" if "QQQ" in macro_df.columns else None)
+        if ref_col is not None and len(macro_df[ref_col].dropna()) >= 65:
+            s_ref = macro_df[ref_col].dropna()
+            ndx_ret63_pct = float((s_ref.iloc[-1] / s_ref.iloc[-64] - 1.0) * 100.0)
+    except Exception:
+        ndx_ret63_pct = 0.0
+
     ticker_list = [str(item["ticker"]) for item in tickers_meta]
     name_map = {str(item["ticker"]): str(item.get("name") or item["ticker"]) for item in tickers_meta}
 
     if not use_cache_only and ticker_list:
         download_tickers_parallel(ticker_list)
+
+    sat_max_slots = int(settings.get("sat_max_slots", 15))
+    sat_pos_eur = float(settings.get("sat_pos_eur", 2000.0))
+    sat_park_in_core = bool(settings.get("sat_park_in_core", True))
+    k4_breadth_min = float(settings.get("k4_breadth_min_pct", 50.0))
+    k4_max_from_hi = float(settings.get("k4_max_from_52w_hi_pct", -20.0))
 
     rows: List[Dict[str, Any]] = []
     failed = 0
@@ -391,13 +466,23 @@ def evaluate_all_signals(
         if res is None:
             failed += 1
             continue
-        sizing = calculate_position_size(
-            portfolio_eur=float(settings.get("portfolio_eur", 25000.0)),
-            risk_pct=float(settings.get("risk_per_trade_pct", 1.0)),
-            max_pos_pct=float(settings.get("max_position_pct", 15.0)),
-            entry_price=float(res.last_close),
-            stop_price=float(res.stop_price),
-        )
+
+        # K4 Quality Metrics: 52-week high proximity + 3M Relative Strength vs Nasdaq-100
+        hi_252 = float(df_px["High"].tail(252).max()) if len(df_px) >= 20 else float(res.last_close)
+        from_52w_hi_pct = ((float(res.last_close) / hi_252) - 1.0) * 100.0 if hi_252 > 0 else -100.0
+        if len(df_px) >= 64 and float(df_px["Close"].iloc[-64]) > 0:
+            ret63_pct = ((float(df_px["Close"].iloc[-1]) / float(df_px["Close"].iloc[-64])) - 1.0) * 100.0
+        else:
+            ret63_pct = 0.0
+        rs_vs_ndx = ret63_pct - ndx_ret63_pct
+
+        fc = fund_cache.get(sym.upper(), {})
+        r_lvl = int(fc.get("risk_level", -1))
+        r_badge = str(fc.get("risk_badge", "—"))
+        last_off_dt = str(fc.get("last_offering_date", ""))
+
+        shares_est = int(sat_pos_eur / float(res.last_close)) if float(res.last_close) > 0 else 0
+
         rows.append(
             {
                 "ticker": sym,
@@ -410,11 +495,20 @@ def evaluate_all_signals(
                 "stop_price": round(float(res.stop_price), 4),
                 "stop_dist_pct": round(float(res.stop_dist_pct), 2),
                 "ext50_pct": round(float(res.ext50_pct), 2),
+                "from_52w_hi_pct": round(from_52w_hi_pct, 1),
+                "ret63_pct": round(ret63_pct, 1),
+                "rs_vs_ndx": round(rs_vs_ndx, 1),
                 "mom_score": round(float(res.mom_score), 2),
                 "rsi_14": round(float(res.rsi_14), 1),
                 "profit_factor": round(float(res.profit_factor), 2),
-                "pos_eur": round(float(sizing.get("alloc_eur", 0.0)), 0),
-                "shares": int(sizing.get("shares", 0)),
+                "risk_level": r_lvl,
+                "risk_badge": r_badge,
+                "last_offering_date": last_off_dt,
+                "pos_eur": round(sat_pos_eur, 0),
+                "shares": shares_est,
+                "k4_tech_ok": False,
+                "dilution_clean": False,
+                "a_plus_buy": False,
             }
         )
 
@@ -425,8 +519,102 @@ def evaluate_all_signals(
     n_ext = sum(1 for r in rows if r["signal"] == "EXTENDED")
     breadth_pct = (daily_up / total * 100.0) if total > 0 else 0.0
 
+    # --- K4 AUTOPILOT FILTER (Makro GRÜN + Breite >= 50% + 52W-Hoch >= -20% + RS > NDX + SEC KE-Sauber) ---
+    k4_macro_ok = bool(snap.get("fed_qqq50_ok", False))
+    k4_breadth_ok = breadth_pct >= k4_breadth_min
+    k4_env_ok = k4_macro_ok and k4_breadth_ok
+
+    k4_tech_candidates: List[Dict[str, Any]] = []
+    for r in rows:
+        near_hi = r["from_52w_hi_pct"] >= k4_max_from_hi
+        rs_ok = r["rs_vs_ndx"] > 0.0
+        r["k4_tech_ok"] = bool((r["daily_regime"] == 1) and k4_env_ok and near_hi and rs_ok)
+        if r["k4_tech_ok"] and not r["in_depot"]:
+            k4_tech_candidates.append(r)
+
+    # Sort technical K4 candidates by highest past 3M Momentum Score (strictly causal!)
+    k4_tech_candidates.sort(key=lambda r: -r["mom_score"])
+
+    # Live SEC EDGAR Dilution Check ONLY for the top K4 buy candidates (super fast, <= 25 tickers!)
+    if not use_cache_only and k4_tech_candidates:
+        try:
+            from .fundamentals import fetch_ticker_fundamentals
+
+            for cand in k4_tech_candidates[:25]:
+                try:
+                    f_live = fetch_ticker_fundamentals(cand["ticker"])
+                    if f_live and int(f_live.get("risk_level", -1)) >= 0:
+                        cand["risk_level"] = int(f_live["risk_level"])
+                        cand["risk_badge"] = str(f_live.get("risk_badge", "—"))
+                        cand["last_offering_date"] = str(f_live.get("last_offering_date", ""))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    # Final Dilution Cleanliness & A+ Buy Flag (blocks risk_level >= 2: acute offerings or Cash < 24M)
+    for r in rows:
+        rl = int(r["risk_level"])
+        # risk_level 0 = SAUBER, 1 = SHELF/MINI, -1 = non-US/no SEC filings -> clean; >= 2 -> blocked!
+        r["dilution_clean"] = rl <= 1
+        r["a_plus_buy"] = bool(r["k4_tech_ok"] and r["dilution_clean"] and (not r["in_depot"]))
+
+    # Compute exact Autopilot Order Plan (zero manual sorting or filtering!)
+    depot_sells_all = [r for r in rows if r["in_depot"] and r["daily_regime"] == -1]
+    depot_keep_all = [r for r in rows if r["in_depot"] and r["daily_regime"] == 1]
+    occupied_slots = len(depot_keep_all)
+    free_slots = max(0, sat_max_slots - occupied_slots)
+
+    ranked_a_plus = sorted([r for r in rows if r["a_plus_buy"]], key=lambda r: -r["mom_score"])
+    buy_orders = ranked_a_plus[:free_slots]
+    total_buy_eur = len(buy_orders) * sat_pos_eur
+    core_stage_now = int(core.get("stage", 0)) if core.get("available") else 0
+
+    autopilot = {
+        "max_slots": sat_max_slots,
+        "pos_eur": sat_pos_eur,
+        "park_in_core": sat_park_in_core,
+        "occupied_slots": occupied_slots,
+        "free_slots": free_slots,
+        "k4_macro_ok": k4_macro_ok,
+        "k4_breadth_ok": k4_breadth_ok,
+        "k4_breadth_min": k4_breadth_min,
+        "k4_env_ok": k4_env_ok,
+        "ndx_ret63_pct": round(ndx_ret63_pct, 1),
+        "a_plus_total": len(ranked_a_plus),
+        "buy_orders": [
+            {
+                "rank": idx + 1,
+                "ticker": r["ticker"],
+                "name": r["name"],
+                "last_close": r["last_close"],
+                "stop_price": r["stop_price"],
+                "stop_dist_pct": r["stop_dist_pct"],
+                "mom_score": r["mom_score"],
+                "from_52w_hi_pct": r["from_52w_hi_pct"],
+                "rs_vs_ndx": r["rs_vs_ndx"],
+                "risk_badge": r["risk_badge"],
+                "pos_eur": sat_pos_eur,
+                "shares": r["shares"],
+            }
+            for idx, r in enumerate(buy_orders)
+        ],
+        "sell_orders": [
+            {
+                "ticker": r["ticker"],
+                "name": r["name"],
+                "last_close": r["last_close"],
+                "stop_price": r["stop_price"],
+            }
+            for r in depot_sells_all
+        ],
+        "total_buy_eur": total_buy_eur,
+        "core_funding_hint": _core_funding_hint(core_stage_now, total_buy_eur, sat_park_in_core) if total_buy_eur > 0 else "",
+        "core_return_hint": _core_return_hint(core_stage_now, sat_park_in_core),
+    }
+
     sig_rank = {"BUY": 0, "WAIT": 1, "EXTENDED": 2, "SELL": 3}
-    rows.sort(key=lambda r: (sig_rank.get(r["signal"], 9), -r["mom_score"]))
+    rows.sort(key=lambda r: (0 if r["a_plus_buy"] else 1, sig_rank.get(r["signal"], 9), -r["mom_score"]))
 
     return {
         "generated_at": datetime.now(timezone.utc).strftime("%d.%m.%Y %H:%M UTC"),
@@ -442,7 +630,9 @@ def evaluate_all_signals(
             "buy": n_buy,
             "wait": n_wait,
             "extended": n_ext,
+            "a_plus": len(ranked_a_plus),
         },
+        "autopilot": autopilot,
         "rows": rows,
         "settings": settings,
     }
@@ -490,20 +680,27 @@ def build_alerts_and_messages(
     force_summary: bool = False,
     dash_url: str = "",
 ) -> Tuple[List[str], Dict[str, Any]]:
-    """Computes diff vs. `prev_state` and builds ultra-clean, scannable Telegram alerts."""
+    """Builds zero-effort, ready-to-execute Autopilot Telegram orders (Core V-Turbo + 15-Slot K4 Satellites)."""
     core = report["core"]
     snap = report["macro_snap"]
     breadth = report["breadth"]
+    ap = report.get("autopilot") or {}
     rows = report["rows"]
     as_of = report["as_of"]
 
     is_first_run = not bool(prev_state)
     prev_signals: Dict[str, str] = dict(prev_state.get("signals") or {})
+    prev_rec_buys: set = set(prev_state.get("recommended_buys") or [])
     curr_signals: Dict[str, str] = {r["ticker"]: r["signal"] for r in rows}
+
+    buy_orders: List[Dict[str, Any]] = list(ap.get("buy_orders") or [])
+    curr_rec_buys: List[str] = [b["ticker"] for b in buy_orders]
+    new_buy_orders = [b for b in buy_orders if b["ticker"] not in prev_rec_buys]
+    core_stage_now = int(core["stage"]) if core.get("available") else 0
 
     messages: List[str] = []
 
-    # --- 1. URGENT ACTION ALERT (only sent when something actually changed!) ---
+    # --- 1. CONCRETE AUTOPILOT ACTION ORDER (only sent when something actually needs execution!) ---
     urgent_blocks: List[str] = []
 
     if core.get("available"):
@@ -515,7 +712,7 @@ def build_alerts_and_messages(
         if prev_core_stage is not None and curr_stage != int(prev_core_stage):
             c_em = {0: "🔴", 1: "🟡", 2: "🟢"}.get(curr_stage, "⚪")
             urgent_blocks.append(
-                f"🏦 <b>CORE V-TURBO: {c_em} Stufe {prev_core_stage} → Stufe {curr_stage}</b>\n"
+                f"🏦 <b>CORE UMSCHICHTEN: {c_em} Stufe {prev_core_stage} → Stufe {curr_stage}</b>\n"
                 f"{_stage_action_hint(int(prev_core_stage), curr_stage)}"
             )
         elif (
@@ -525,125 +722,119 @@ def build_alerts_and_messages(
         ):
             urgent_blocks.append(
                 f"⏳ <b>CORE VORSCHAU:</b> Live Stufe {curr_live} (aktiv: Stufe {curr_stage})\n"
-                f"→ Erst am Freitagabend umschichten"
-            )
-
-    if snap.get("available"):
-        prev_regime = prev_state.get("macro_regime")
-        curr_regime = str(snap["regime_label"])
-        prev_fed = prev_state.get("fed_ok")
-        curr_fed = bool(snap["fed_ok"])
-        if prev_regime is not None and curr_regime != prev_regime:
-            m_em = "🟢" if snap.get("fed_qqq50_ok") else ("🟡" if (curr_fed or snap.get("qqq50_ok")) else "🔴")
-            urgent_blocks.append(
-                f"🌍 <b>MAKRO: {m_em} {html.escape(curr_regime)}</b> (war {html.escape(str(prev_regime))})"
-            )
-        elif prev_fed is not None and curr_fed != bool(prev_fed):
-            urgent_blocks.append(
-                f"🌍 <b>FED 3M:</b> {'🟢 jetzt GRÜN' if curr_fed else '🔴 jetzt ROT'} ({snap['irx']:.2f} %)"
+                f"→ Noch NICHT handeln — erst am Montag 07:00 nach Freitag-Schluss"
             )
 
     depot_sells = [
         r for r in rows
-        if r["in_depot"] and r["signal"] == "SELL" and prev_signals.get(r["ticker"]) not in (None, "SELL")
-    ]
-    depot_buys = [
-        r for r in rows
-        if r["in_depot"] and r["signal"] == "BUY" and prev_signals.get(r["ticker"]) not in (None, "BUY")
+        if r["in_depot"] and r["daily_regime"] == -1 and prev_signals.get(r["ticker"]) not in (None, "SELL")
     ]
     depot_near_stop = [
         r for r in rows
         if r["in_depot"] and r["daily_regime"] == 1 and 0.0 <= r["stop_dist_pct"] <= 3.0
     ]
+
     if depot_sells:
-        lines = ["🔴 <b>DEPOT VERKAUFEN (SELL):</b>"]
+        lines = ["🔴 <b>SOFORT VERKAUFEN (DEPOT):</b>"]
         for r in depot_sells:
-            lines.append(f"• <b>{html.escape(r['ticker'])}</b> · {r['last_close']:.2f} (Stop gerissen)")
-        urgent_blocks.append("\n".join(lines))
-    if depot_near_stop:
-        lines = ["⚠️ <b>DEPOT NAHE STOP (&lt;3 %):</b>"]
-        for r in depot_near_stop:
-            lines.append(f"• <b>{html.escape(r['ticker'])}</b> · {r['last_close']:.2f} (Stop {r['stop_price']:.2f})")
-        urgent_blocks.append("\n".join(lines))
-    if depot_buys:
-        lines = ["🟢 <b>DEPOT WIEDER BUY:</b>"]
-        for r in depot_buys:
-            lines.append(f"• <b>{html.escape(r['ticker'])}</b> · {r['last_close']:.2f} (Stop {r['stop_price']:.2f})")
+            lines.append(f"• <b>{html.escape(r['ticker'])}</b> komplett verkaufen · Kurs {r['last_close']:.2f} (Stopp gerissen)")
+        lines.append(str(ap.get("core_return_hint") or _core_return_hint(core_stage_now, True)))
         urgent_blocks.append("\n".join(lines))
 
-    new_buys = [
-        r for r in rows
-        if r["signal"] == "BUY" and prev_signals.get(r["ticker"]) not in (None, "BUY")
-    ]
-    if new_buys:
-        lines = [f"🚀 <b>NEUE KAUFSIGNALE ({len(new_buys)}):</b>"]
-        for r in new_buys[:8]:
-            pos_txt = f" · ~{r['pos_eur']:.0f} €" if r["pos_eur"] > 0 else ""
+    if depot_near_stop:
+        lines = ["⚠️ <b>DEPOT NAHE STOPP (&lt;3 % — noch halten):</b>"]
+        for r in depot_near_stop:
+            lines.append(f"• <b>{html.escape(r['ticker'])}</b> · {r['last_close']:.2f} (Stopp {r['stop_price']:.2f})")
+        urgent_blocks.append("\n".join(lines))
+
+    if new_buy_orders:
+        pos_eur = float(ap.get("pos_eur", 2000.0))
+        occ = int(ap.get("occupied_slots", 0))
+        msl = int(ap.get("max_slots", 15))
+        need_eur = len(new_buy_orders) * pos_eur
+        fund_hint = _core_funding_hint(core_stage_now, need_eur, bool(ap.get("park_in_core", True)))
+        lines = [
+            f"🟢 <b>JETZT KAUFEN ({len(new_buy_orders)} neue A+ Orders · {occ}/{msl} Plätze belegt):</b>",
+            fund_hint,
+        ]
+        for idx_o, b in enumerate(new_buy_orders, 1):
+            badge = html.escape(str(b.get("risk_badge") or "—"))
+            pos_str = f"{pos_eur:,.0f}".replace(",", ".")
             lines.append(
-                f"• <b>{html.escape(r['ticker'])}</b> · {r['last_close']:.2f} (Stop {r['stop_price']:.2f}{pos_txt})"
+                f"{idx_o}. <b>{html.escape(b['ticker'])}</b> · <b>{pos_str} €</b> (~{b['shares']} Stk @ {b['last_close']:.2f})\n"
+                f"   Stopp {b['stop_price']:.2f} · Mom {b['mom_score']:+.2f} · 52W {b['from_52w_hi_pct']:+.0f}% · RS {b['rs_vs_ndx']:+.0f}% · {badge}"
             )
-        if len(new_buys) > 8:
-            lines.append(f"<i>+ {len(new_buys) - 8} weitere im Dashboard</i>")
+        lines.append("<i>Nach Kauf in TradingPro v3 ins Depot legen (Cloud-Sync automatisch).</i>")
         urgent_blocks.append("\n".join(lines))
 
     if urgent_blocks:
-        footer = f'\n\n📱 <a href="{html.escape(dash_url)}">Details im Dashboard</a>' if dash_url else ""
+        footer = f'\n\n📱 <a href="{html.escape(dash_url)}">App öffnen</a>' if dash_url else ""
         messages.append(
-            f"🚨 <b>HANDLUNGSBEDARF · {html.escape(as_of)}</b>\n\n"
+            f"⚡ <b>ORDER-ANWEISUNG · {html.escape(as_of)}</b>\n\n"
             + "\n\n".join(urgent_blocks)
             + footer
         )
 
-    # --- 2. ULTRA-CLEAN WEEKLY FRIDAY SUMMARY (or --force-summary) ---
+    # --- 2. ULTRA-CLEAN WEEKLY CHECKLIST (Friday close / Monday 07:00 or --force-summary) ---
     is_friday = bool(core.get("is_friday", False))
     last_summary_date = str(prev_state.get("last_summary_date", ""))
     need_summary = force_summary or is_first_run or (is_friday and last_summary_date != as_of)
 
     if need_summary:
-        blocks = [f"📊 <b>TradingPro · {html.escape(as_of)}</b>"]
+        blocks = [f"📊 <b>TradingPro Autopilot · {html.escape(as_of)}</b>"]
 
         if core.get("available"):
             c_em = {0: "🔴", 1: "🟡", 2: "🟢"}.get(int(core["stage"]), "⚪")
             short_names = {0: "Cash", 1: "Trend 1×", 2: "Voller Turbo 2×"}
             st_lbl = short_names.get(int(core["stage"]), str(core["stage_name"]))
             blocks.append(
-                f"🏦 <b>CORE (70 %):</b> {c_em} Stufe {core['stage']} · {st_lbl}\n"
+                f"🏦 <b>CORE V-TURBO:</b> {c_em} Stufe {core['stage']} · {st_lbl}\n"
                 f"→ <b>{core['a0lc12_pct']} % A0LC12 · {core['dbx0an_pct']} % DBX0AN</b>\n"
                 f"→ {html.escape(str(core.get('index_name', 'Nasdaq-100')))}: <b>{fmt_pts(core.get('ndx', core['qqq']))} Pkt</b>\n"
                 f"→ {_short_core_next_step(core)}"
             )
 
-        if snap.get("available"):
-            if snap.get("fed_qqq50_ok"):
-                m_txt = "🟢 GRÜN (Käufe erlaubt)"
-            elif snap.get("fed_ok") or snap.get("qqq50_ok"):
-                m_txt = "🟡 ÜBERGANG (Abwarten)"
-            else:
-                m_txt = "🔴 ROT (Abwarten)"
-            blocks.append(
-                f"🌍 <b>MAKRO (30 %):</b> {m_txt}\n"
-                f"→ Breite: {breadth['pct']:.1f} % ({breadth['buy']} BUY · {breadth['wait']} WAIT)"
-            )
+        occ = int(ap.get("occupied_slots", 0))
+        msl = int(ap.get("max_slots", 15))
+        pos_eur = float(ap.get("pos_eur", 2000.0))
+        k4_m = "🟢" if ap.get("k4_macro_ok") else "🔴"
+        k4_b = "🟢" if ap.get("k4_breadth_ok") else "🔴"
+        env_txt = "🟢 KÄUFE FREIGESCHALTET" if ap.get("k4_env_ok") else "🔴 PAUSE (freies Budget bleibt im CORE)"
+        pos_str = f"{pos_eur:,.0f}".replace(",", ".")
+        blocks.append(
+            f"🎯 <b>SATELLITEN ({occ}/{msl} Plätze · je {pos_str} €):</b>\n"
+            f"→ Status: <b>{env_txt}</b>\n"
+            f"→ Ampeln: {k4_m} Makro (Fed+NDX50) · {k4_b} Breite {breadth['pct']:.1f} % (Ziel ≥50 %)"
+        )
 
         depot_rows = [r for r in rows if r["in_depot"]]
         if depot_rows:
-            d_lines = ["💼 <b>MEIN DEPOT:</b>"]
+            d_lines = [f"💼 <b>MEIN DEPOT ({len(depot_rows)}):</b>"]
             for r in depot_rows:
-                em = {"BUY": "🟢", "WAIT": "🟡", "EXTENDED": "🟣", "SELL": "🔴"}.get(r["signal"], "⚪")
-                d_lines.append(f"{em} <b>{html.escape(r['ticker'])}</b> ({r['signal']}) · {r['last_close']:.2f} · Stop {r['stop_dist_pct']:+.1f} %")
+                act_tag = "🔴 VERKAUFEN" if r["daily_regime"] == -1 else "🟢 HALTEN"
+                d_lines.append(f"• <b>{html.escape(r['ticker'])}</b> · {act_tag} · {r['last_close']:.2f} (Stopp {r['stop_price']:.2f} / {r['stop_dist_pct']:+.1f}%)")
             blocks.append("\n".join(d_lines))
 
-        buys_now = [r for r in rows if r["signal"] == "BUY"]
-        if buys_now:
-            b_lines = [f"🚀 <b>AKTIVE BUY-SIGNALE ({len(buys_now)}):</b>"]
-            for r in buys_now[:5]:
-                b_lines.append(f"• <b>{html.escape(r['ticker'])}</b> · {r['last_close']:.2f} (Stop {r['stop_price']:.2f})")
+        if buy_orders:
+            total_eur = float(ap.get("total_buy_eur", 0.0))
+            b_lines = [
+                f"🟢 <b>KAUF-ANWEISUNG ({len(buy_orders)} Top-Orders · frei: {ap.get('free_slots', 0)}):</b>",
+                str(ap.get("core_funding_hint", "")),
+            ]
+            for idx_o, b in enumerate(buy_orders[:8], 1):
+                badge = html.escape(str(b.get("risk_badge") or "—"))
+                b_lines.append(
+                    f"{idx_o}. <b>{html.escape(b['ticker'])}</b> · {pos_str} € (~{b['shares']} Stk @ {b['last_close']:.2f}) · Stopp {b['stop_price']:.2f} · {badge}"
+                )
+            if len(buy_orders) > 8:
+                b_lines.append(f"<i>+ {len(buy_orders) - 8} weitere im Dashboard</i>")
             blocks.append("\n".join(b_lines))
         else:
-            blocks.append("✅ <b>Kein Handlungsbedarf.</b>")
+            if not depot_sells:
+                blocks.append("✅ <b>HEUTE NICHTS ZU TUN</b> — Core &amp; freies Satelliten-Budget laufen planmäßig.")
 
         if dash_url:
-            blocks.append(f'📱 <a href="{html.escape(dash_url)}">Alle Details im Dashboard</a>')
+            blocks.append(f'📱 <a href="{html.escape(dash_url)}">Handy-Dashboard öffnen</a>')
 
         messages.append("\n\n".join(blocks))
 
@@ -655,22 +846,33 @@ def build_alerts_and_messages(
         "macro_regime": str(snap["regime_label"]) if snap.get("available") else None,
         "fed_ok": bool(snap["fed_ok"]) if snap.get("available") else None,
         "last_summary_date": as_of if need_summary else last_summary_date,
+        "recommended_buys": curr_rec_buys,
         "signals": curr_signals,
     }
     return messages, new_state
 
 
 def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -> str:
-    """Generates a self-contained dark-mode Mobile PWA (`docs/index.html` + `manifest.json`)."""
+    """Generates a self-contained dark-mode Mobile PWA (`docs/index.html` + `manifest.json`)
+    preserving the Android maskable adaptive icon, Service Worker, and K4 Autopilot order card.
+    """
     os.makedirs(out_dir, exist_ok=True)
     manifest = {
+        "id": "/tradingpro-monitor/",
         "name": "TradingPro Mobile",
         "short_name": "TradingPro",
         "start_url": "./index.html",
+        "scope": "./",
         "display": "standalone",
-        "background_color": "#12151a",
-        "theme_color": "#12151a",
-        "description": "Core R1-F Ampel, Makro-Liquidität & 128-Aktien Supertrend Monitor",
+        "background_color": "#0b111e",
+        "theme_color": "#0b111e",
+        "description": "Core V-Turbo Ampel, K4+SEC Satelliten-Autopilot & 128-Aktien Monitor",
+        "icons": [
+            {"src": "icon-192.png?v=2", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": "icon-512.png?v=2", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": "icon-maskable-192.png?v=2", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+            {"src": "icon-maskable-512.png?v=2", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
     }
     with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as fh:
         json.dump(manifest, fh, indent=2, ensure_ascii=False)
@@ -683,6 +885,7 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
         "macro_snap": report["macro_snap"],
         "macro_diag": {k: v for k, v in report["macro_diag"].items() if not isinstance(v, pd.Series)},
         "breadth": report["breadth"],
+        "autopilot": report.get("autopilot") or {},
         "rows": report["rows"],
     }
     json_blob = json.dumps(data_payload, ensure_ascii=False, default=str).replace("</", "<\\/")
@@ -692,10 +895,18 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#12151a" />
+  <meta name="theme-color" content="#0b111e" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <link rel="manifest" href="manifest.json" />
-  <title>TradingPro Mobile — Core R1-F &amp; Signale</title>
+  <meta name="apple-mobile-web-app-title" content="TradingPro" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta property="og:title" content="TradingPro Mobile — Core V-Turbo &amp; Autopilot" />
+  <meta property="og:description" content="Nasdaq-100 Core V-Turbo Ampel &amp; K4+SEC 15-Plätze Satelliten-Autopilot" />
+  <meta property="og:image" content="https://kayti90.github.io/tradingpro-monitor/icon-512.png?v=2" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2" />
+  <link rel="manifest" href="manifest.json?v=2" />
+  <title>TradingPro Mobile — Core V-Turbo &amp; Autopilot</title>
   <style>
     :root {{
       --bg: #12151a; --card: #1b2028; --card2: #222834; --border: #2e3646;
@@ -755,15 +966,19 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
 </head>
 <body>
   <header>
-    <div>
-      <h1>TradingPro Mobile</h1>
-      <div class="meta" id="hdr-meta">Stand: —</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <img src="icon-192.png?v=2" alt="TradingPro" width="32" height="32" style="border-radius:8px;box-shadow:0 0 10px rgba(46,204,113,0.35);" />
+      <div>
+        <h1>TradingPro Mobile</h1>
+        <div class="meta" id="hdr-meta">Stand: —</div>
+      </div>
     </div>
     <div id="hdr-breadth" class="badge b-SELL">—</div>
   </header>
 
   <main>
     <section id="tab-core" class="tab active">
+      <div class="card" id="autopilot-card"></div>
       <div class="card" id="core-card"></div>
       <div class="card" id="macro-card"></div>
     </section>
@@ -801,8 +1016,42 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
     document.getElementById("hdr-meta").textContent = "Stand: " + D.as_of + " (" + D.generated_at + ")";
     const br = D.breadth;
     const hb = document.getElementById("hdr-breadth");
-    hb.textContent = "Breite " + fmt(br.pct,1) + "% (" + br.buy + " BUY)";
-    hb.className = "badge " + (br.pct >= 35 ? "b-BUY" : (br.pct >= 20 ? "b-WAIT" : "b-SELL"));
+    hb.textContent = "Breite " + fmt(br.pct,1) + "% (" + (br.a_plus || 0) + " A+)";
+    hb.className = "badge " + (br.pct >= 50 ? "b-BUY" : (br.pct >= 35 ? "b-WAIT" : "b-SELL"));
+
+    // Render Autopilot Action Card (15 Slots à 2.000 €, Zero Sorting Needed!)
+    const ap = D.autopilot || {{}};
+    const apSells = ap.sell_orders || [];
+    const apBuys = ap.buy_orders || [];
+    const apBannerCls = apSells.length ? "bg-red" : (apBuys.length ? "bg-green" : "bg-blue");
+    const apBannerTxt = apSells.length
+      ? `🔴 ${{apSells.length}} VERKAUFEN`
+      : (apBuys.length ? `🟢 ${{apBuys.length}} A+ ORDERS KAUFEN` : "✅ HEUTE NICHTS ZU TUN");
+    let apBody = "";
+    if (apSells.length) {{
+      apBody += `<div class="trigger" style="border-left-color:var(--red)"><b>🔴 SOFORT VERKAUFEN:</b><br>` +
+        apSells.map(s => `• <b>${{s.ticker}}</b> komplett verkaufen @ ${{fmt(s.last_close)}} (Stopp gerissen)`).join("<br>") +
+        `<br>${{ap.core_return_hint || ""}}</div>`;
+    }}
+    if (apBuys.length) {{
+      apBody += `<div class="trigger" style="border-left-color:var(--green)"><b>${{ap.core_funding_hint || ""}}</b><br><br>` +
+        apBuys.map(b => `${{b.rank}}. <b>${{b.ticker}}</b> · <b>${{Math.round(b.pos_eur).toLocaleString('de-DE')}} €</b> (~${{b.shares}} Stk @ ${{fmt(b.last_close)}}) · Stopp ${{fmt(b.stop_price)}} · ${{b.risk_badge}}`).join("<br>") +
+        `</div>`;
+    }} else if (!apSells.length) {{
+      apBody += `<div class="trigger">Keine offenen Orders. Freies Satelliten-Budget arbeitet automatisch im Core (Stufe ${{D.core.stage}}).</div>`;
+    }}
+    document.getElementById("autopilot-card").innerHTML = `
+      <div class="card-title">🎯 Autopilot-Anweisung (${{ap.occupied_slots || 0}}/${{ap.max_slots || 15}} Plätze · je ${{Math.round(ap.pos_eur || 2000).toLocaleString('de-DE')}} €)</div>
+      <div class="stage-banner ${{apBannerCls}}">
+        <span>${{apBannerTxt}}</span>
+        <span>Frei: ${{ap.free_slots ?? 15}} Plätze</span>
+      </div>
+      <div class="lights">
+        <div class="light-pill"><span class="dot ${{ap.k4_macro_ok?'dot-green':'dot-red'}}"></span><div><b>Makro K4</b><br>${{ap.k4_macro_ok?'GRÜN':'ROT'}}</div></div>
+        <div class="light-pill"><span class="dot ${{ap.k4_breadth_ok?'dot-green':'dot-red'}}"></span><div><b>Breite (≥50%)</b><br>${{fmt(br.pct,1)}}%</div></div>
+      </div>
+      ${{apBody}}
+    `;
 
     // Render 3-Stage V-Turbo Core Card
     const c = D.core;
@@ -856,12 +1105,12 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
       el.innerHTML = list.map(r => `
         <div class="stock-row">
           <div class="st-left">
-            <div class="st-ticker">${{r.ticker}} <span class="badge b-${{r.signal}}">${{r.signal}}</span></div>
-            <div class="st-name">${{r.name}} · seit ${{r.signal_date}}</div>
+            <div class="st-ticker">${{r.ticker}} <span class="badge b-${{r.signal}}">${{r.a_plus_buy ? '★ A+' : r.signal}}</span></div>
+            <div class="st-name">${{r.name}} · ${{r.risk_badge || '—'}}</div>
           </div>
           <div class="st-right">
             <div><b>${{fmt(r.last_close)}}</b> · Stop ${{fmt(r.stop_price)}} (${{fmtS(r.stop_dist_pct)}}%)</div>
-            <div style="color:var(--muted)">vs50: ${{fmtS(r.ext50_pct)}}% · Mom: ${{fmtS(r.mom_score)}} · ~${{Math.round(r.pos_eur)}} €</div>
+            <div style="color:var(--muted)">Mom ${{fmtS(r.mom_score)}} · 52W ${{fmtS(r.from_52w_hi_pct,0)}}% · RS ${{fmtS(r.rs_vs_ndx,0)}}%</div>
           </div>
         </div>
       `).join("");
@@ -874,9 +1123,9 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
     // Watchlist Tab with live search & filter chips
     let activeFilter = "ALL";
     document.getElementById("wl-title").textContent = `📋 Watchlist (${{D.rows.length}} Aktien)`;
-    const counts = {{ALL: D.rows.length, BUY: br.buy, WAIT: br.wait, EXTENDED: br.extended, SELL: D.rows.length - br.buy - br.wait - br.extended}};
+    const counts = {{ALL: D.rows.length, APLUS: br.a_plus || 0, BUY: br.buy, WAIT: br.wait, EXTENDED: br.extended, SELL: D.rows.length - br.buy - br.wait - br.extended}};
     const chipsEl = document.getElementById("filter-chips");
-    [["ALL","Alle"],["BUY","BUY"],["WAIT","WAIT"],["EXTENDED","EXT"],["SELL","SELL"]].forEach(([k, lbl]) => {{
+    [["ALL","Alle"],["APLUS","★ A+"],["BUY","BUY"],["WAIT","WAIT"],["EXTENDED","EXT"],["SELL","SELL"]].forEach(([k, lbl]) => {{
       const b = document.createElement("button");
       b.className = "chip" + (k === activeFilter ? " active" : "");
       b.textContent = `${{lbl}} (${{counts[k]}})`;
@@ -892,7 +1141,8 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
     function applyWatchlistFilter() {{
       const q = document.getElementById("search-box").value.trim().toUpperCase();
       const filtered = D.rows.filter(r => {{
-        if (activeFilter !== "ALL" && r.signal !== activeFilter) return false;
+        if (activeFilter === "APLUS" && !r.a_plus_buy) return false;
+        if (activeFilter !== "ALL" && activeFilter !== "APLUS" && r.signal !== activeFilter) return false;
         if (q && !r.ticker.toUpperCase().includes(q) && !r.name.toUpperCase().includes(q)) return false;
         return true;
       }});
@@ -911,6 +1161,11 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
         window.scrollTo(0, 0);
       }};
     }});
+
+    // Register Service Worker so Android Chrome keeps full-bleed maskable adaptive icon
+    if ("serviceWorker" in navigator) {{
+      navigator.serviceWorker.register("./sw.js").catch(() => {{}});
+    }}
   </script>
 </body>
 </html>
