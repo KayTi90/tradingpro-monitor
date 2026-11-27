@@ -3,10 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#12151a" />
+  <meta name="theme-color" content="#0d1117" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="TradingPro" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta property="og:title" content="TradingPro Mobile — Core V-Turbo & Signale" />
+  <meta property="og:description" content="Nasdaq-100 Core V-Turbo Ampel, Makro-Liquidität & 128-Aktien Supertrend Monitor" />
+  <meta property="og:image" content="https://kayti90.github.io/tradingpro-monitor/icon-512.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
   <link rel="manifest" href="manifest.json" />
-  <title>TradingPro Mobile — Core R1-F &amp; Signale</title>
+  <title>TradingPro Mobile — Core V-Turbo &amp; Signale</title>
   <style>
     :root {
       --bg: #12151a; --card: #1b2028; --card2: #222834; --border: #2e3646;
@@ -66,9 +74,12 @@
 </head>
 <body>
   <header>
-    <div>
-      <h1>TradingPro Mobile</h1>
-      <div class="meta" id="hdr-meta">Stand: —</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <img src="icon-192.png" alt="TradingPro" width="32" height="32" style="border-radius:8px;box-shadow:0 0 10px rgba(46,204,113,0.35);" />
+      <div>
+        <h1>TradingPro Mobile</h1>
+        <div class="meta" id="hdr-meta">Stand: —</div>
+      </div>
     </div>
     <div id="hdr-breadth" class="badge b-SELL">—</div>
   </header>
