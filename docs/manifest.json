@@ -3,7 +3,21 @@
   "short_name": "TradingPro",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#12151a",
-  "theme_color": "#12151a",
-  "description": "Core R1-F Ampel, Makro-Liquidität & 128-Aktien Supertrend Monitor"
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "description": "Core V-Turbo Ampel, Makro-Liquidität & 128-Aktien Supertrend Monitor",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
