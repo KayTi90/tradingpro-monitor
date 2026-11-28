@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-11-28T05:43:51Z",
+  "synced_at": "2026-11-28T05:44:15Z",
   "tickers": [
     {
       "ticker": "002230.SZ",
@@ -36,6 +36,10 @@
     {
       "ticker": "AAOI",
       "name": "Applied Optoelectronics, Inc."
+    },
+    {
+      "ticker": "ABSI",
+      "name": "Absci Corporation"
     },
     {
       "ticker": "ACHR",
