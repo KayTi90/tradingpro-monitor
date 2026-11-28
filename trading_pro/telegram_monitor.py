@@ -654,23 +654,29 @@ def _short_core_next_step(core: Dict[str, Any]) -> str:
     st = int(core["stage"])
     ndx = float(core.get("ndx", core.get("qqq", 0.0)))
     idx = str(core.get("index_name", "Nasdaq-100"))
+    sma20 = float(core.get("sma20", core["sma50"]))
+    sma50 = float(core["sma50"])
     if st == 0:
-        sma50 = float(core["sma50"])
-        need = ((sma50 / ndx) - 1.0) * 100.0 if ndx > 0 else 0.0
-        tgt_pct = "100 %" if (core["vol_ok"] and core["overheat_ok"]) else "50 %"
-        if need <= 0:
-            return f"Einstieg {tgt_pct}: {idx} über 50er ({fmt_pts(sma50)}) — wartet auf Bestätigung"
-        return f"Einstieg {tgt_pct} ab {idx} &gt; {fmt_pts(sma50)} ({need:+.1f} %)"
+        need20 = ((sma20 / ndx) - 1.0) * 100.0 if ndx > 0 else 0.0
+        need50 = ((sma50 / ndx) - 1.0) * 100.0 if ndx > 0 else 0.0
+        if core.get("vol_ok"):
+            if need20 <= 0:
+                return f"Frühstart 50 %: {idx} &gt; SMA20 ({fmt_pts(sma20)}) — wartet auf 3T-Bestätigung · 100 % ab &gt; {fmt_pts(sma50)}"
+            return f"Frühstart 50 % ab {idx} &gt; SMA20 ({fmt_pts(sma20)}, {need20:+.1f} %, 3T) · 100 % ab &gt; {fmt_pts(sma50)}"
+        return f"Einstieg 50 % ab {idx} &gt; SMA50 ({fmt_pts(sma50)}, {need50:+.1f} %) · SMA20 bei Vola ROT gesperrt"
     if st == 1:
+        if core.get("early_sma20_active"):
+            target_up = min(float(core["sma200_up"]), sma50)
+            return f"2×-Turbo (100 %) ab {idx} &gt; {fmt_pts(target_up)} · Exit &lt; SMA20 ({fmt_pts(sma20)}, 3T)"
         wait_for = []
         if not core["vol_ok"]:
             wait_for.append(f"Vola &lt;25 % ({core['vol20']:.0f} %)")
         if not core["overheat_ok"]:
             wait_for.append("Abkühlung &lt;+22 %")
-        w_txt = " + ".join(wait_for) if wait_for else "Freitag-Check"
-        exit_pt = fmt_pts(core["sma200_dn"]) if core["sma200_band_ok"] else fmt_pts(core["sma50"])
+        w_txt = " + ".join(wait_for) if wait_for else "Tagesschluss"
+        exit_pt = fmt_pts(core["sma200_dn"]) if core["sma200_band_ok"] else fmt_pts(sma50)
         return f"2×-Turbo ab: {w_txt} · Exit &lt; {exit_pt}"
-    exit_pt = fmt_pts(core["sma200_dn"]) if core["sma200_band_ok"] else fmt_pts(core["sma50"])
+    exit_pt = fmt_pts(core["sma200_dn"]) if core["sma200_band_ok"] else fmt_pts(sma50)
     return f"Bremse auf 50 % bei Vola &gt;35 % ({core['vol20']:.0f} %) oder Ext &gt;+30 % · Exit &lt; {exit_pt}"
 
 
@@ -705,24 +711,13 @@ def build_alerts_and_messages(
 
     if core.get("available"):
         prev_core_stage = prev_state.get("core_stage")
-        prev_live_stage = prev_state.get("core_live_stage")
         curr_stage = int(core["stage"])
-        curr_live = int(core["live_stage"])
 
         if prev_core_stage is not None and curr_stage != int(prev_core_stage):
             c_em = {0: "🔴", 1: "🟡", 2: "🟢"}.get(curr_stage, "⚪")
             urgent_blocks.append(
-                f"🏦 <b>CORE UMSCHICHTEN: {c_em} Stufe {prev_core_stage} → Stufe {curr_stage}</b>\n"
+                f"🏦 <b>CORE SOFORT UMSCHICHTEN (09:00 Xetra): {c_em} Stufe {prev_core_stage} → Stufe {curr_stage}</b>\n"
                 f"{_stage_action_hint(int(prev_core_stage), curr_stage)}"
-            )
-        elif (
-            core.get("weekly_pending")
-            and prev_live_stage is not None
-            and curr_live != int(prev_live_stage)
-        ):
-            urgent_blocks.append(
-                f"⏳ <b>CORE VORSCHAU:</b> Live Stufe {curr_live} (aktiv: Stufe {curr_stage})\n"
-                f"→ Noch NICHT handeln — erst am Montag 07:00 nach Freitag-Schluss"
             )
 
     depot_sells = [
@@ -1066,12 +1061,13 @@ def generate_mobile_dashboard(report: Dict[str, Any], out_dir: str = DOCS_DIR) -
       </div>
       <div class="alloc-bar"><div class="alloc-a0" style="width:${{c.a0lc12_pct}}%"></div></div>
       <div class="lights">
-        <div class="light-pill"><span class="dot ${{c.sma50_ok?'dot-green':'dot-red'}}"></span><div><b>50er</b><br>${{fmtS(c.vs_sma50_pct)}}%</div></div>
+        <div class="light-pill"><span class="dot ${{c.sma20_ok?'dot-green':'dot-red'}}"></span><div><b>20er (Früh-50%)</b><br>${{fmtS(c.vs_sma20_pct)}}%</div></div>
+        <div class="light-pill"><span class="dot ${{c.sma50_ok?'dot-green':'dot-red'}}"></span><div><b>50er (3T)</b><br>${{fmtS(c.vs_sma50_pct)}}%</div></div>
         <div class="light-pill"><span class="dot ${{c.sma200_band_ok?'dot-green':'dot-red'}}"></span><div><b>200er (+2,5/-3%)</b><br>${{fmtS(c.vs_sma200_pct)}}%</div></div>
         <div class="light-pill"><span class="dot ${{volDot}}"></span><div><b>Vola (25/35)</b><br>${{fmt(c.vol20,1)}}%</div></div>
         <div class="light-pill"><span class="dot ${{ohDot}}"></span><div><b>Überhitzung</b><br>${{c.overheat_ok ? 'OK (<30%)' : 'BREMS'}}</div></div>
       </div>
-      <div class="trigger">➜ ${{c.next_trigger}}<br><span style="color:var(--muted);font-size:11px">${{c.index_name || 'Nasdaq-100'}}: ${{Math.round(c.ndx || c.qqq).toLocaleString('de-DE')}} Pkt | Freitags-Check | 2-Depot-LIFO | Drift-Cap 65%</span></div>
+      <div class="trigger">➜ ${{c.next_trigger}}<br><span style="color:var(--muted);font-size:11px">${{c.index_name || 'Nasdaq-100'}}: ${{Math.round(c.ndx || c.qqq).toLocaleString('de-DE')}} Pkt | Täglich (09:00 Xetra) | 2-Depot-LIFO | Drift-Cap 65%</span></div>
     ` : '<div class="empty">Keine Core-Daten verfügbar.</div>';
 
     // Render Macro Card
