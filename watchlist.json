@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-11-28T05:27:22Z",
+  "synced_at": "2026-11-28T05:30:14Z",
   "tickers": [
     {
       "ticker": "002230.SZ",
@@ -432,6 +432,10 @@
     {
       "ticker": "SERV",
       "name": "Serve Robotics Inc."
+    },
+    {
+      "ticker": "SES",
+      "name": "SES AI Corporation"
     },
     {
       "ticker": "SLDP",
