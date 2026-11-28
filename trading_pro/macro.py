@@ -251,9 +251,12 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
     if idx_col is not None:
         idx_s = df[idx_col]
         df["NDX_ref"] = idx_s
+        df["QQQ_sma20"] = idx_s.rolling(20).mean()
         df["QQQ_sma50"] = idx_s.rolling(50).mean()
         df["QQQ_sma200"] = idx_s.rolling(200).mean()
         df["QQQ_ext200"] = ((idx_s / df["QQQ_sma200"]) - 1.0) * 100.0
+        df["sig_qqq20_raw"] = (idx_s > df["QQQ_sma20"]).astype(int)
+        df["sig_qqq20_3d"] = _apply_confirmation(df["sig_qqq20_raw"], days=3)
         df["sig_qqq50_raw"] = (idx_s > df["QQQ_sma50"]).astype(int)
         df["sig_qqq50_3d"] = _apply_confirmation(df["sig_qqq50_raw"], days=3)
         # R1-F: Wider SMA200 hysteresis band (+2.5% re-entry / -3.0% exit)
@@ -266,9 +269,12 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
         df["sig_not_overheat"] = _apply_vol_band(df["QQQ_ext200"], lo=22.0, hi=30.0)
     else:
         df["NDX_ref"] = np.nan
+        df["QQQ_sma20"] = np.nan
         df["QQQ_sma50"] = np.nan
         df["QQQ_sma200"] = np.nan
         df["QQQ_ext200"] = np.nan
+        df["sig_qqq20_raw"] = 1
+        df["sig_qqq20_3d"] = 1
         df["sig_qqq50_raw"] = 1
         df["sig_qqq50_3d"] = 1
         df["sig_qqq200_band"] = 1
@@ -305,27 +311,24 @@ def compute_macro_signals(mdf: pd.DataFrame) -> pd.DataFrame:
     df["macro_strict_liq"] = _apply_confirmation(raw_strict, days=3)
 
     # 3-Stage V-Turbo Core Allocation (A0LC12 2x Nasdaq UCITS / DBX0AN Money Market)
-    # Pure price-trend + volatility + overheating (no rate-whipsaw noise in Core!)
+    # Daily execution (next morning 09:00 Xetra, zero Friday-delay!) + Vola-gated SMA20(3T) early 50% start:
+    # - Stage 2 (100%): (SMA200-Band | SMA50-3T) AND Vola(25/35) OK AND Overheating(22/30) OK
+    # - Stage 1 ( 50%): ((SMA200-Band | SMA50-3T) & ~turbo_ok) OR (SMA20-3T & Vola OK)
+    # - Stage 0 (  0%): otherwise
     s200 = df["sig_qqq200_band"] == 1
     s50 = df["sig_qqq50_3d"] == 1
+    s20 = df["sig_qqq20_3d"] == 1
+    vol_ok = df["sig_vol_band"] == 1
+    oh_ok = df["sig_not_overheat"] == 1
     trend_up = s200 | s50
-    turbo_ok = (df["sig_vol_band"] == 1) & (df["sig_not_overheat"] == 1)
+    turbo_ok = vol_ok & oh_ok
+    early_s20 = (~trend_up) & s20 & vol_ok
 
     core_daily = np.zeros(len(df), dtype=int)
-    core_daily[(trend_up & ~turbo_ok).values] = 1
+    core_daily[((trend_up & ~turbo_ok) | early_s20).values] = 1
     core_daily[(trend_up & turbo_ok).values] = 2
     df["core_stage_daily"] = core_daily
-
-    # Weekly / Friday-confirmed active stage (changes only on last trading day of each week)
-    wk = np.array(df.index.isocalendar().week, dtype=int)
-    is_week_end = np.r_[wk[:-1] != wk[1:], (df.index[-1].dayofweek == 4)] if len(df) > 1 else np.array([True])
-    core_weekly = np.empty(len(df), dtype=int)
-    curr_w_stage = int(core_daily[0]) if len(df) > 0 else 0
-    for i in range(len(df)):
-        if i == 0 or is_week_end[i]:
-            curr_w_stage = int(core_daily[i])
-        core_weekly[i] = curr_w_stage
-    df["core_stage"] = core_weekly
+    df["core_stage"] = core_daily
 
     df["cb_score"] = df["sig_fed"] + df["sig_tnx"] + df["sig_dxy"]
     df["liq_score_6"] = (
@@ -350,18 +353,24 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
     last = mdf.iloc[-1]
     last_dt = mdf.index[-1]
     qqq = float(last.get(idx_col, np.nan))
+    sma20 = float(last.get("QQQ_sma20", np.nan))
     sma50 = float(last.get("QQQ_sma50", np.nan))
     sma200 = float(last.get("QQQ_sma200", np.nan))
     if np.isnan(qqq) or np.isnan(sma50) or np.isnan(sma200) or sma50 <= 0 or sma200 <= 0:
         return {"available": False}
+    if np.isnan(sma20) or sma20 <= 0:
+        sma20 = sma50
 
     sma200_up = sma200 * 1.025
     sma200_dn = sma200 * 0.970
+    vs_sma20_pct = ((qqq / sma20) - 1.0) * 100.0
     vs_sma50_pct = ((qqq / sma50) - 1.0) * 100.0
     vs_sma200_pct = ((qqq / sma200) - 1.0) * 100.0
     vs_band_up_pct = ((qqq / sma200_up) - 1.0) * 100.0
     vs_band_dn_pct = ((qqq / sma200_dn) - 1.0) * 100.0
 
+    sma20_ok = int(last.get("sig_qqq20_3d", 0)) == 1
+    sma20_raw_ok = int(last.get("sig_qqq20_raw", 0)) == 1
     sma50_ok = int(last.get("sig_qqq50_3d", 0)) == 1
     sma50_raw_ok = int(last.get("sig_qqq50_raw", 0)) == 1
     sma200_band_ok = int(last.get("sig_qqq200_band", 0)) == 1
@@ -372,15 +381,16 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
     vol_ok = int(last.get("sig_vol_band", 0)) == 1
     vol_stress = pd.notna(vol20) and vol20 > 35.0
     overheat_ok = int(last.get("sig_not_overheat", 1)) == 1
+    early_sma20_active = (not sma200_band_ok) and (not sma50_ok) and sma20_ok and vol_ok
 
     stage = int(last.get("core_stage", 0))
     live_stage = int(last.get("core_stage_daily", stage))
     is_friday = last_dt.dayofweek == 4
-    weekly_pending = live_stage != stage
+    weekly_pending = False  # Daily execution — no Friday wait!
 
     stage_meta = {
         0: (0, 100, 0.0, "CRASH-SCHUTZ", "inverse-danger", "#ff4d4d"),
-        1: (50, 50, 1.0, "TREND (1×)", "inverse-warning", "#f1c40f"),
+        1: (50, 50, 1.0, "FRÜHSTART (1×)" if early_sma20_active else "TREND (1×)", "inverse-warning", "#f1c40f"),
         2: (100, 0, 2.0, "VOLLER TURBO (2×)", "inverse-success", "#2ecc71"),
     }
     a0lc12_pct, dbx0an_pct, eff_lev, stage_name, bootstyle, color_hex = stage_meta.get(
@@ -388,26 +398,42 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
     )
 
     if stage == 0:
-        turbo_ready = vol_ok and overheat_ok
-        next_lbl = "Stufe 2 / 100% A0LC12" if turbo_ready else "Stufe 1 / 50% A0LC12"
-        if sma50_raw_ok:
-            next_trigger = (
-                f"Einstieg ({next_lbl}): {idx_name} > SMA50 ({fmt_pts(sma50)}) wartet auf 3T-/Freitags-Bestätigung"
-            )
+        need20_pct = ((sma20 / qqq) - 1.0) * 100.0
+        need50_pct = ((sma50 / qqq) - 1.0) * 100.0
+        if vol_ok:
+            if sma20_raw_ok:
+                next_trigger = (
+                    f"Frühstart 50% (Depot A): {idx_name} > SMA20 ({fmt_pts(sma20)}) wartet auf 3T-Bestätigung  |  "
+                    f"100% ab > SMA50 ({fmt_pts(sma50)}, {need50_pct:+.1f}%)"
+                )
+            else:
+                next_trigger = (
+                    f"Frühstart 50% (Depot A): {idx_name} > SMA20 ({fmt_pts(sma20)}, noch {need20_pct:+.1f}%, 3T)  |  "
+                    f"100% ab > SMA50 ({fmt_pts(sma50)}, {need50_pct:+.1f}%)"
+                )
         else:
-            need_pct = ((sma50 / qqq) - 1.0) * 100.0
             next_trigger = (
-                f"Einstieg ({next_lbl}): {idx_name} > SMA50 ({fmt_pts(sma50)}, noch {need_pct:+.1f}%)"
+                f"Einstieg 50%: {idx_name} > SMA50 ({fmt_pts(sma50)}, noch {need50_pct:+.1f}%)  |  "
+                f"SMA20-Frühstart gesperrt (Vola {vol20:.1f}% ROT)"
             )
     elif stage == 1:
-        blockers = []
-        if not vol_ok:
-            blockers.append(f"Vola < 25% (Band 25/35%, akt. {vol20:.1f}%)")
-        if not overheat_ok:
-            blockers.append(f"Ext200 < +22% (akt. {vs_sma200_pct:+.1f}%)")
-        blocker_str = " + ".join(blockers) if blockers else "Freitags-Check abwarten"
-        exit_ref = f"SMA200 -3% ({fmt_pts(sma200_dn)}, {vs_band_dn_pct:+.1f}%)" if sma200_band_ok else f"SMA50 ({fmt_pts(sma50)}, {vs_sma50_pct:+.1f}%)"
-        next_trigger = f"2×-Turbo (Stufe 2 / 100% A0LC12): {blocker_str}  |  Exit-Puffer: {exit_ref}"
+        if early_sma20_active:
+            need50_pct = ((sma50 / qqq) - 1.0) * 100.0
+            need200_pct = ((sma200_up / qqq) - 1.0) * 100.0
+            target_up = f"SMA200+2,5% ({fmt_pts(sma200_up)}, {need200_pct:+.1f}%)" if sma200_up < sma50 else f"SMA50 ({fmt_pts(sma50)}, {need50_pct:+.1f}%)"
+            next_trigger = (
+                f"2×-Turbo (100% A0LC12) ab: {target_up}  |  "
+                f"Exit → 0%: < SMA20 ({fmt_pts(sma20)}, {vs_sma20_pct:+.1f}%, 3T) oder Vola > 35%"
+            )
+        else:
+            blockers = []
+            if not vol_ok:
+                blockers.append(f"Vola < 25% (Band 25/35%, akt. {vol20:.1f}%)")
+            if not overheat_ok:
+                blockers.append(f"Ext200 < +22% (akt. {vs_sma200_pct:+.1f}%)")
+            blocker_str = " + ".join(blockers) if blockers else "nächster Tagesschluss"
+            exit_ref = f"SMA200 -3% ({fmt_pts(sma200_dn)}, {vs_band_dn_pct:+.1f}%)" if sma200_band_ok else f"SMA50 ({fmt_pts(sma50)}, {vs_sma50_pct:+.1f}%)"
+            next_trigger = f"2×-Turbo (Stufe 2 / 100% A0LC12): {blocker_str}  |  Exit-Puffer: {exit_ref}"
     else:
         exit_ref = f"SMA200 -3% ({fmt_pts(sma200_dn)}, {vs_band_dn_pct:+.1f}%)" if sma200_band_ok else f"SMA50 ({fmt_pts(sma50)}, {vs_sma50_pct:+.1f}%)"
         next_trigger = (
@@ -415,9 +441,7 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
             f"Exit-Puffer: {exit_ref}"
         )
 
-    if weekly_pending:
-        next_trigger = f"⏳ Live-Vorschau: Stufe {live_stage} (erst am Freitagabend umsetzen!)  |  {next_trigger}"
-    elif vol_stress and stage > 0:
+    if vol_stress and stage > 0:
         next_trigger = f"⚠️ Vola-Stress ({vol20:.1f}% > 35%)  |  {next_trigger}"
 
     return {
@@ -428,6 +452,7 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
         "live_stage": live_stage,
         "is_friday": is_friday,
         "weekly_pending": weekly_pending,
+        "early_sma20_active": early_sma20_active,
         "stage_name": stage_name,
         "color_hex": color_hex,
         "bootstyle": bootstyle,
@@ -436,14 +461,17 @@ def get_core_allocation_status(mdf: Optional[pd.DataFrame]) -> Dict[str, object]
         "eff_lev": eff_lev,
         "ndx": qqq,
         "qqq": qqq,
+        "sma20": sma20,
         "sma50": sma50,
         "sma200": sma200,
         "sma200_up": sma200_up,
         "sma200_dn": sma200_dn,
+        "vs_sma20_pct": vs_sma20_pct,
         "vs_sma50_pct": vs_sma50_pct,
         "vs_sma200_pct": vs_sma200_pct,
         "vs_band_up_pct": vs_band_up_pct,
         "vs_band_dn_pct": vs_band_dn_pct,
+        "sma20_ok": sma20_ok,
         "sma50_ok": sma50_ok,
         "sma200_band_ok": sma200_band_ok,
         "irx": irx_val,
