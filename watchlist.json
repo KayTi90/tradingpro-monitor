@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-11-28T05:38:44Z",
+  "synced_at": "2026-11-28T05:39:35Z",
   "tickers": [
     {
       "ticker": "002230.SZ",
@@ -264,6 +264,10 @@
     {
       "ticker": "LAES",
       "name": "SEALSQ Corp"
+    },
+    {
+      "ticker": "LEU",
+      "name": "Centrus Energy Corp."
     },
     {
       "ticker": "LFMD",
