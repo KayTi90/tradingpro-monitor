@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-11-27T18:38:07Z",
+  "synced_at": "2026-11-28T05:25:09Z",
   "tickers": [
     {
       "ticker": "002230.SZ",
@@ -264,6 +264,10 @@
     {
       "ticker": "LUNR",
       "name": "Intuitive Machines, Inc."
+    },
+    {
+      "ticker": "LWLG",
+      "name": "Lightwave Logic, Inc."
     },
     {
       "ticker": "MARA",
