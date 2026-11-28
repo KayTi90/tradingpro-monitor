@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-11-28T05:56:28Z",
+  "synced_at": "2026-11-28T06:02:46Z",
   "tickers": [
     {
       "ticker": "0981.HK",
@@ -108,10 +108,6 @@
     {
       "ticker": "BKSY",
       "name": "BlackSky Technology Inc."
-    },
-    {
-      "ticker": "BTQ",
-      "name": "BTQ Technologies Corp."
     },
     {
       "ticker": "CLSK",
@@ -326,10 +322,6 @@
       "name": "Planet Labs PBC"
     },
     {
-      "ticker": "PLUG",
-      "name": "Plug Power, Inc."
-    },
-    {
       "ticker": "PME.AX",
       "name": "PROMEDICUS FPO [PME]"
     },
@@ -342,20 +334,12 @@
       "name": "Pony AI Inc."
     },
     {
-      "ticker": "PRME",
-      "name": "Prime Medicine, Inc."
-    },
-    {
       "ticker": "QBTS",
       "name": "D-Wave Quantum Inc."
     },
     {
       "ticker": "QS",
       "name": "QuantumScape Corporation"
-    },
-    {
-      "ticker": "QTEX",
-      "name": "QTREX Quantum Ltd."
     },
     {
       "ticker": "QUBT",
@@ -446,10 +430,6 @@
       "name": "SoundHound AI, Inc."
     },
     {
-      "ticker": "SPIR",
-      "name": "Spire Global, Inc."
-    },
-    {
       "ticker": "SWMR",
       "name": "Swarmer, Inc"
     },
@@ -480,10 +460,6 @@
     {
       "ticker": "VUZI",
       "name": "Vuzix Corporation"
-    },
-    {
-      "ticker": "WATT",
-      "name": "Energous Corporation"
     },
     {
       "ticker": "XYZ",
@@ -877,11 +853,6 @@
       "risk_badge": "🟢 SAUBER",
       "last_offering_date": "2026-06-05"
     },
-    "PLUG": {
-      "risk_level": 3,
-      "risk_badge": "🔴 CASH 4M",
-      "last_offering_date": "2025-10-08"
-    },
     "PME.AX": {
       "risk_level": 0,
       "risk_badge": "🟢 SAUBER",
@@ -1032,11 +1003,6 @@
       "risk_badge": "🔴 CASH 4M",
       "last_offering_date": "2026-08-14"
     },
-    "WATT": {
-      "risk_level": 2,
-      "risk_badge": "🟠 CASH 19M",
-      "last_offering_date": "2025-09-11"
-    },
     "XYZ": {
       "risk_level": 0,
       "risk_badge": "🟢 SAUBER",
@@ -1051,11 +1017,6 @@
       "risk_level": 0,
       "risk_badge": "🟢 SAUBER",
       "last_offering_date": ""
-    },
-    "QTEX": {
-      "risk_level": 2,
-      "risk_badge": "🟠 CASH 15M",
-      "last_offering_date": "2026-08-21"
     },
     "LWLG": {
       "risk_level": 1,
@@ -1087,11 +1048,6 @@
       "risk_badge": "🟠 CASH 24M",
       "last_offering_date": "2025-02-28"
     },
-    "BTQ": {
-      "risk_level": 3,
-      "risk_badge": "🔴 CASH 8M",
-      "last_offering_date": ""
-    },
     "ARQQ": {
       "risk_level": 3,
       "risk_badge": "🔴 CASH 8M",
@@ -1117,20 +1073,10 @@
       "risk_badge": "🚨 OFF 28% (78T)",
       "last_offering_date": "2026-09-11"
     },
-    "SPIR": {
-      "risk_level": 4,
-      "risk_badge": "🚨 OFF 13% (18T)",
-      "last_offering_date": "2026-11-10"
-    },
     "RCAT": {
       "risk_level": 3,
       "risk_badge": "🔴 CASH 2M",
       "last_offering_date": "2026-05-14"
-    },
-    "PRME": {
-      "risk_level": 4,
-      "risk_badge": "🚨 OFF 14% (16T)",
-      "last_offering_date": "2026-11-12"
     },
     "RXRX": {
       "risk_level": 3,
