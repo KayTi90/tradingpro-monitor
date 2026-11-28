@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-11-28T05:41:11Z",
+  "synced_at": "2026-11-28T05:42:40Z",
   "tickers": [
     {
       "ticker": "002230.SZ",
@@ -380,6 +380,10 @@
     {
       "ticker": "PONY",
       "name": "Pony AI Inc."
+    },
+    {
+      "ticker": "PRME",
+      "name": "Prime Medicine, Inc."
     },
     {
       "ticker": "QBTS",
