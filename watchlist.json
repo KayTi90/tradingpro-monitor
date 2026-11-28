@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-11-28T05:42:40Z",
+  "synced_at": "2026-11-28T05:43:51Z",
   "tickers": [
     {
       "ticker": "002230.SZ",
@@ -436,6 +436,10 @@
     {
       "ticker": "RUN",
       "name": "Sunrun Inc."
+    },
+    {
+      "ticker": "RXRX",
+      "name": "Recursion Pharmaceuticals, Inc."
     },
     {
       "ticker": "RZLV",
