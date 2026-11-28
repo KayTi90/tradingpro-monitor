@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-11-28T05:25:42Z",
+  "synced_at": "2026-11-28T05:26:18Z",
   "tickers": [
     {
       "ticker": "002230.SZ",
@@ -40,6 +40,10 @@
     {
       "ticker": "ACHR",
       "name": "Archer Aviation Inc."
+    },
+    {
+      "ticker": "AEHR",
+      "name": "Aehr Test Systems"
     },
     {
       "ticker": "AEVA",
