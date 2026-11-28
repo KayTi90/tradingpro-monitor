@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-11-28T05:32:29Z",
+  "synced_at": "2026-11-28T05:33:00Z",
   "tickers": [
     {
       "ticker": "002230.SZ",
@@ -380,6 +380,10 @@
     {
       "ticker": "QTEX",
       "name": "QTREX Quantum Ltd."
+    },
+    {
+      "ticker": "QUBT",
+      "name": "Quantum Computing Inc."
     },
     {
       "ticker": "QUIK",
