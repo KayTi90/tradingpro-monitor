@@ -1,10 +1,6 @@
 {
-  "synced_at": "2026-11-28T05:44:15Z",
+  "synced_at": "2026-11-28T05:56:28Z",
   "tickers": [
-    {
-      "ticker": "002230.SZ",
-      "name": "IFLYTEK"
-    },
     {
       "ticker": "0981.HK",
       "name": "SMIC"
@@ -54,10 +50,6 @@
       "name": "Aeva Technologies, Inc."
     },
     {
-      "ticker": "AIRO",
-      "name": "AIRO Group Holdings, Inc."
-    },
-    {
       "ticker": "ALAB",
       "name": "Astera Labs, Inc."
     },
@@ -78,10 +70,6 @@
       "name": "Applovin Corporation"
     },
     {
-      "ticker": "ARBE",
-      "name": "Arbe Robotics Ltd."
-    },
-    {
       "ticker": "ARM",
       "name": "Arm Holdings plc"
     },
@@ -96,10 +84,6 @@
     {
       "ticker": "ASPN",
       "name": "Aspen Aerogels, Inc."
-    },
-    {
-      "ticker": "ASTC",
-      "name": "Astrotech Corporation"
     },
     {
       "ticker": "ASTS",
@@ -124,18 +108,6 @@
     {
       "ticker": "BKSY",
       "name": "BlackSky Technology Inc."
-    },
-    {
-      "ticker": "BRN.AX",
-      "name": "BRAINCHIP FPO [BRN]"
-    },
-    {
-      "ticker": "BROS",
-      "name": "Dutch Bros Inc."
-    },
-    {
-      "ticker": "BTC-USD",
-      "name": "Bitcoin USD"
     },
     {
       "ticker": "BTQ",
@@ -198,10 +170,6 @@
       "name": "Firefly Aerospace Inc."
     },
     {
-      "ticker": "GALT",
-      "name": "Galectin Therapeutics Inc."
-    },
-    {
       "ticker": "GOOGL",
       "name": "Alphabet Inc."
     },
@@ -238,10 +206,6 @@
       "name": "JinkoSolar Holding Company Limi"
     },
     {
-      "ticker": "JOBY",
-      "name": "Joby Aviation, Inc."
-    },
-    {
       "ticker": "KEEL",
       "name": "Keel Infrastructure Corp."
     },
@@ -260,10 +224,6 @@
     {
       "ticker": "KTOS",
       "name": "Kratos Defense & Security Solut"
-    },
-    {
-      "ticker": "KYCCF",
-      "name": "Keyence Corp."
     },
     {
       "ticker": "LAES",
@@ -308,10 +268,6 @@
     {
       "ticker": "MARA",
       "name": "MARA Holdings, Inc."
-    },
-    {
-      "ticker": "MBLY",
-      "name": "Mobileye Global Inc."
     },
     {
       "ticker": "MSTR",
@@ -446,24 +402,12 @@
       "name": "Recursion Pharmaceuticals, Inc."
     },
     {
-      "ticker": "RZLV",
-      "name": "Rezolve AI PLC"
-    },
-    {
       "ticker": "SATL",
       "name": "Satellogic Inc."
     },
     {
-      "ticker": "SEAS.CN",
-      "name": "DeepSeaMrl"
-    },
-    {
       "ticker": "SEDG",
       "name": "SolarEdge Technologies, Inc."
-    },
-    {
-      "ticker": "SEI-USD",
-      "name": "Sei USD"
     },
     {
       "ticker": "SERV",
@@ -498,20 +442,12 @@
       "name": "SoFi Technologies, Inc."
     },
     {
-      "ticker": "SOL-USD",
-      "name": "Solana USD"
-    },
-    {
       "ticker": "SOUN",
       "name": "SoundHound AI, Inc."
     },
     {
       "ticker": "SPIR",
       "name": "Spire Global, Inc."
-    },
-    {
-      "ticker": "SUI20947-USD",
-      "name": "Sui USD"
     },
     {
       "ticker": "SWMR",
@@ -522,16 +458,8 @@
       "name": "Tilray Brands, Inc."
     },
     {
-      "ticker": "TUI1.DE",
-      "name": "TUI AG                        N"
-    },
-    {
       "ticker": "TWST",
       "name": "Twist Bioscience Corporation"
-    },
-    {
-      "ticker": "UA",
-      "name": "Under Armour, Inc."
     },
     {
       "ticker": "UEC",
@@ -546,20 +474,12 @@
       "name": "Energy Fuels Inc"
     },
     {
-      "ticker": "VERI",
-      "name": "Veritone, Inc."
-    },
-    {
       "ticker": "VKTX",
       "name": "Viking Therapeutics, Inc."
     },
     {
       "ticker": "VUZI",
       "name": "Vuzix Corporation"
-    },
-    {
-      "ticker": "VWAV",
-      "name": "VisionWave Holdings, Inc."
     },
     {
       "ticker": "WATT",
@@ -576,10 +496,6 @@
     {
       "ticker": "ZBRA",
       "name": "Zebra Technologies Corporation"
-    },
-    {
-      "ticker": "ZENA",
-      "name": "ZenaTech, Inc."
     }
   ],
   "depot": [],
@@ -604,5 +520,627 @@
     "portfolio_eur": 25000.0,
     "risk_per_trade_pct": 1.0,
     "max_position_pct": 15.0
+  },
+  "fundamentals_cache": {
+    "0981.HK": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "1211.HK": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "2590.HK": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "81810.HK": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "9660.HK": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "9880.HK": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "9988.HK": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "AAOI": {
+      "risk_level": 4,
+      "risk_badge": "🚨 ATM 16% (7T)",
+      "last_offering_date": "2026-11-17"
+    },
+    "ACHR": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 21M",
+      "last_offering_date": "2026-08-18"
+    },
+    "AEVA": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 15M",
+      "last_offering_date": "2026-06-04"
+    },
+    "ALAB": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "ALM": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "AMBA": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "APP": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "ARM": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "ASPI": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 22M",
+      "last_offering_date": "2025-10-16"
+    },
+    "ASPN": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "ASTS": {
+      "risk_level": 3,
+      "risk_badge": "🟠 OFF 4% (7T)",
+      "last_offering_date": "2026-11-17"
+    },
+    "AVAV": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-07-03"
+    },
+    "BBAI": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-07-31"
+    },
+    "BIDU": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "BKSY": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-05-22"
+    },
+    "CLSK": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 4M",
+      "last_offering_date": "2025-10-29"
+    },
+    "COIN": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-08-15"
+    },
+    "CORZ": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 6M",
+      "last_offering_date": "2025-04-08"
+    },
+    "CRCL": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-08-12"
+    },
+    "CVNA": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-02-19"
+    },
+    "DGXX": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 6M",
+      "last_offering_date": "2026-05-08"
+    },
+    "DMRC": {
+      "risk_level": 3,
+      "risk_badge": "🚨 OFF 16% (55T)",
+      "last_offering_date": "2026-09-30"
+    },
+    "DRO.AX": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "EH": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "ENPH": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "ENVX": {
+      "risk_level": 4,
+      "risk_badge": "🚨 CONV 29% (6T)",
+      "last_offering_date": "2026-11-18"
+    },
+    "EOSE": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 7M",
+      "last_offering_date": "2026-07-02"
+    },
+    "FIGR": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-11-17"
+    },
+    "FLY": {
+      "risk_level": 2,
+      "risk_badge": "🟠 OFF 6% (49T)",
+      "last_offering_date": "2026-10-06"
+    },
+    "GOOGL": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-08-07"
+    },
+    "HGRAF": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "HIMS": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "INFQ": {
+      "risk_level": 4,
+      "risk_badge": "🚨 OFF (8T)",
+      "last_offering_date": "2026-11-16"
+    },
+    "INOD": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-08-06"
+    },
+    "IONQ": {
+      "risk_level": 4,
+      "risk_badge": "🚨 OFF 7% (11T)",
+      "last_offering_date": "2026-11-13"
+    },
+    "IOVA": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 22M",
+      "last_offering_date": "2025-08-22"
+    },
+    "ISRG": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "JKS": {
+      "risk_level": 2,
+      "risk_badge": "🟠 OFF (32T)",
+      "last_offering_date": "2026-10-23"
+    },
+    "KEEL": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2025-01-28"
+    },
+    "KLAR": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 12M",
+      "last_offering_date": "2025-03-14"
+    },
+    "KOPN": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2025-11-07"
+    },
+    "KRKNF": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "KTOS": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-10-14"
+    },
+    "LAES": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-03-17"
+    },
+    "LFMD": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "LHA.DE": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "LITE": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "LOVE": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "LUNR": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2026-06-03"
+    },
+    "MARA": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 10M",
+      "last_offering_date": "2025-03-28"
+    },
+    "MSTR": {
+      "risk_level": 4,
+      "risk_badge": "🚨 OFF 58% (22T)",
+      "last_offering_date": "2026-11-02"
+    },
+    "NEL.OL": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "NFLX": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "NIO": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-09-11"
+    },
+    "NNE": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-03-13"
+    },
+    "NRXP": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 8M",
+      "last_offering_date": "2026-06-03"
+    },
+    "NVDA": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "NXPI": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "OKLO": {
+      "risk_level": 3,
+      "risk_badge": "🚨 ATM 25% (74T)",
+      "last_offering_date": "2026-09-11"
+    },
+    "ONDS": {
+      "risk_level": 4,
+      "risk_badge": "🚨 OFF (6T)",
+      "last_offering_date": "2026-11-18"
+    },
+    "OUST": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-07-06"
+    },
+    "PACB": {
+      "risk_level": 4,
+      "risk_badge": "🚨 ATM 18% (14T)",
+      "last_offering_date": "2026-11-10"
+    },
+    "PCT": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 10M",
+      "last_offering_date": "2026-06-12"
+    },
+    "PL": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-06-05"
+    },
+    "PLUG": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 4M",
+      "last_offering_date": "2025-10-08"
+    },
+    "PME.AX": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "POET": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-05-18"
+    },
+    "PONY": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "QBTS": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2026-09-10"
+    },
+    "QS": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "QUIK": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-03-10"
+    },
+    "RDDT": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "RDW": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2026-06-09"
+    },
+    "RGTI": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2025-05-30"
+    },
+    "RKLB": {
+      "risk_level": 2,
+      "risk_badge": "🟠 OFF (90T)",
+      "last_offering_date": "2026-08-26"
+    },
+    "RR": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-02-18"
+    },
+    "RRX": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "RUN": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "SATL": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2026-03-30"
+    },
+    "SEDG": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "SERV": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 14M",
+      "last_offering_date": "2026-05-14"
+    },
+    "SLI": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "SLV": {
+      "risk_level": -1,
+      "risk_badge": "—",
+      "last_offering_date": ""
+    },
+    "SMCI": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2026-06-12"
+    },
+    "SMR": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 21M",
+      "last_offering_date": "2026-08-11"
+    },
+    "SOFI": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 3M",
+      "last_offering_date": "2025-12-05"
+    },
+    "SOUN": {
+      "risk_level": 2,
+      "risk_badge": "🟠 OFF 8% (81T)",
+      "last_offering_date": "2026-09-04"
+    },
+    "SWMR": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 19M",
+      "last_offering_date": "2026-08-19"
+    },
+    "TLRY": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2026-04-21"
+    },
+    "TWST": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-08-19"
+    },
+    "UEC": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-11-14"
+    },
+    "UMAC": {
+      "risk_level": 3,
+      "risk_badge": "🟠 OFF 4% (1T)",
+      "last_offering_date": "2026-11-23"
+    },
+    "UUUU": {
+      "risk_level": 3,
+      "risk_badge": "🚨 ATM 36% (42T)",
+      "last_offering_date": "2026-10-13"
+    },
+    "VKTX": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CONV 6% (60T)",
+      "last_offering_date": "2026-09-25"
+    },
+    "VUZI": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 4M",
+      "last_offering_date": "2026-08-14"
+    },
+    "WATT": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 19M",
+      "last_offering_date": "2025-09-11"
+    },
+    "XYZ": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "YSS": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 11M",
+      "last_offering_date": "2025-11-17"
+    },
+    "ZBRA": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": ""
+    },
+    "QTEX": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 15M",
+      "last_offering_date": "2026-08-21"
+    },
+    "LWLG": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2026-04-21"
+    },
+    "LPTH": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 23M",
+      "last_offering_date": "2026-06-03"
+    },
+    "AEHR": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-04-08"
+    },
+    "AXTI": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2026-04-21"
+    },
+    "SLDP": {
+      "risk_level": 1,
+      "risk_badge": "🟡 SHELF",
+      "last_offering_date": "2026-01-29"
+    },
+    "SES": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 24M",
+      "last_offering_date": "2025-02-28"
+    },
+    "BTQ": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 8M",
+      "last_offering_date": ""
+    },
+    "ARQQ": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 8M",
+      "last_offering_date": "2026-05-21"
+    },
+    "QUBT": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-07-29"
+    },
+    "LTBR": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-09-26"
+    },
+    "AMSC": {
+      "risk_level": 0,
+      "risk_badge": "🟢 SAUBER",
+      "last_offering_date": "2025-12-23"
+    },
+    "LEU": {
+      "risk_level": 3,
+      "risk_badge": "🚨 OFF 28% (78T)",
+      "last_offering_date": "2026-09-11"
+    },
+    "SPIR": {
+      "risk_level": 4,
+      "risk_badge": "🚨 OFF 13% (18T)",
+      "last_offering_date": "2026-11-10"
+    },
+    "RCAT": {
+      "risk_level": 3,
+      "risk_badge": "🔴 CASH 2M",
+      "last_offering_date": "2026-05-14"
+    },
+    "PRME": {
+      "risk_level": 4,
+      "risk_badge": "🚨 OFF 14% (16T)",
+      "last_offering_date": "2026-11-12"
+    },
+    "RXRX": {
+      "risk_level": 3,
+      "risk_badge": "🚨 OFF 12% (44T)",
+      "last_offering_date": "2026-10-15"
+    },
+    "ABSI": {
+      "risk_level": 2,
+      "risk_badge": "🟠 CASH 19M",
+      "last_offering_date": "2026-06-24"
+    }
   }
 }
